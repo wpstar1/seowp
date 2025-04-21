@@ -1,0 +1,145 @@
+const TelegramBot = require('node-telegram-bot-api');
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccountKey.json');
+
+// Firebase Admin 초기화
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
+
+// 텔레그램 봇 토큰
+const token = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN';
+const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || 'YOUR_ADMIN_CHAT_ID'; // 관리자의 텔레그램 채팅 ID
+
+// 봇 생성
+const bot = new TelegramBot(token, { polling: true });
+
+// 승인 요청 처리
+async function processPaymentRequest(userId, email) {
+  try {
+    // 고유 요청 ID 생성
+    const requestId = `req_${Date.now()}_${userId}`;
+    
+    // 사용자 승인 요청을 Firestore에 저장
+    await db.collection('approvalRequests').doc(requestId).set({
+      userId,
+      email,
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    // 관리자에게 승인 요청 메시지 보내기
+    const approveUrl = `https://your-app-domain.com/approve?requestId=${requestId}`;
+    const rejectUrl = `https://your-app-domain.com/reject?requestId=${requestId}`;
+    
+    await bot.sendMessage(
+      adminChatId,
+      `새로운 VIP 승인 요청:\n이메일: ${email}\n사용자 ID: ${userId}\n\n승인하려면 다음 링크를 클릭하세요:\n${approveUrl}\n\n거절하려면:\n${rejectUrl}`
+    );
+    
+    return requestId;
+  } catch (error) {
+    console.error('승인 요청 처리 중 오류:', error);
+    throw error;
+  }
+}
+
+// 웹훅 라우트로 승인/거절 처리
+async function handleApproval(requestId, isApproved) {
+  try {
+    const requestRef = db.collection('approvalRequests').doc(requestId);
+    const request = await requestRef.get();
+    
+    if (!request.exists) {
+      throw new Error('요청을 찾을 수 없습니다');
+    }
+    
+    const data = request.data();
+    
+    if (data.status !== 'pending') {
+      throw new Error('이미 처리된 요청입니다');
+    }
+    
+    if (isApproved) {
+      // 승인 처리
+      const now = new Date();
+      const expiryDate = new Date(now.setDate(now.getDate() + 30)); // 30일 후
+      
+      // 사용자 문서 업데이트
+      await db.collection('users').doc(data.userId).update({
+        membershipType: 'vip',
+        membershipExpiry: admin.firestore.Timestamp.fromDate(expiryDate),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      // 승인 요청 상태 업데이트
+      await requestRef.update({
+        status: 'approved',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      // 사용자에게 알림 보내기 (이메일 또는 앱 내 알림)
+      // ...
+      
+      // 관리자에게 승인 완료 메시지
+      await bot.sendMessage(
+        adminChatId,
+        `✅ VIP 승인 완료\n이메일: ${data.email}\n유효기간: ${expiryDate.toLocaleDateString()}`
+      );
+    } else {
+      // 거절 처리
+      await requestRef.update({
+        status: 'rejected',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      // 관리자에게 거절 완료 메시지
+      await bot.sendMessage(
+        adminChatId,
+        `❌ VIP 승인 거절\n이메일: ${data.email}`
+      );
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('승인 처리 중 오류:', error);
+    throw error;
+  }
+}
+
+// 30일 이후 멤버십 만료 처리 (Cloud Function으로 구현 예정)
+async function checkExpiredMemberships() {
+  const now = admin.firestore.Timestamp.now();
+  
+  try {
+    // 만료된 VIP 회원 찾기
+    const snapshot = await db.collection('users')
+      .where('membershipType', '==', 'vip')
+      .where('membershipExpiry', '<', now)
+      .get();
+    
+    const batch = db.batch();
+    
+    snapshot.docs.forEach(doc => {
+      // 일반 회원으로 다운그레이드
+      batch.update(doc.ref, {
+        membershipType: 'regular',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    
+    await batch.commit();
+    console.log(`${snapshot.size}명의 만료된 VIP 회원을 일반 회원으로 변경했습니다.`);
+  } catch (error) {
+    console.error('멤버십 만료 확인 중 오류:', error);
+  }
+}
+
+// 모듈 내보내기
+module.exports = {
+  processPaymentRequest,
+  handleApproval,
+  checkExpiredMemberships
+};

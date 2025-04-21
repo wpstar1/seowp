@@ -1,0 +1,192 @@
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f7f9fc;
+  padding: 20px;
+}
+
+.auth-form-container {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.auth-form-container h2 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 28px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.form-group input {
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  border-color: #4a6cf7;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.2);
+}
+
+.auth-button {
+  margin-top: 10px;
+  padding: 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #4a6cf7;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.1s;
+}
+
+.auth-button:not(:disabled):hover {
+  background-color: #3a57e8;
+}
+
+.auth-button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.auth-button:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.auth-links {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.auth-links a {
+  color: #4a6cf7;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-links a:hover {
+  text-decoration: underline;
+}
+
+.auth-error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.auth-success {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* VIP 업그레이드 페이지 스타일 */
+.vip-info {
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  background-color: #f8fafc;
+}
+
+.vip-info h3 {
+  color: #4a5568;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.vip-info ul {
+  padding-left: 20px;
+  margin-bottom: 20px;
+}
+
+.vip-info li {
+  margin-bottom: 8px;
+  color: #4a5568;
+}
+
+.vip-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #3182ce;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.payment-info {
+  background-color: #edf2f7;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+
+.payment-info h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #4a5568;
+}
+
+.payment-info p {
+  margin: 6px 0;
+  color: #4a5568;
+}
+
+.vip-status {
+  margin-bottom: 24px;
+}
+
+.vip-status h3 {
+  color: #4a5568;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.pending-status {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.vip-button {
+  background-color: #3182ce;
+}
+
+.vip-button:not(:disabled):hover {
+  background-color: #2c5282;
+}

@@ -1,0 +1,198 @@
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  min-height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.dashboard-header h1 {
+  font-size: 28px;
+  color: #333;
+  margin: 0;
+}
+
+.logout-button {
+  background-color: transparent;
+  border: 1px solid #ddd;
+  color: #666;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-profile-card, 
+.quick-actions {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 25px;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 15px;
+}
+
+.profile-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.badge {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.vip-badge {
+  background-color: #ffefd5;
+  color: #ff8c00;
+}
+
+.regular-badge {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.profile-details p {
+  margin: 10px 0;
+  color: #555;
+}
+
+.expiry-info {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #fffbe6;
+  border-radius: 5px;
+  border-left: 3px solid #ffd666;
+}
+
+.expiry-warning {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+.usage-info {
+  background-color: #f6f6f6;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 15px 0;
+}
+
+.usage-limit {
+  display: block;
+  margin-top: 5px;
+  color: #ff4d4f;
+  font-size: 13px;
+}
+
+.upgrade-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.upgrade-section h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.upgrade-section ul {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+
+.upgrade-section li {
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.upgrade-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #ff8c00;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.upgrade-button:hover {
+  background-color: #e67e00;
+}
+
+.quick-actions h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 20px;
+  color: #333;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.action-button {
+  padding: 15px;
+  text-align: center;
+  background-color: #f0f7ff;
+  color: #0066cc;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.action-button:hover {
+  background-color: #e6f2ff;
+  transform: translateY(-2px);
+}
+
+.action-button.secondary {
+  background-color: #f6f6f6;
+  color: #666;
+}
+
+.action-button.secondary:hover {
+  background-color: #ededed;
+}
