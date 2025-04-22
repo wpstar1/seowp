@@ -31,8 +31,9 @@ async function processPaymentRequest(userId, email) {
     });
     
     // 관리자에게 승인 요청 메시지 보내기
-    const approveUrl = `https://your-app-domain.com/approve?requestId=${requestId}`;
-    const rejectUrl = `https://your-app-domain.com/reject?requestId=${requestId}`;
+    const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
+    const approveUrl = `${appDomain}/api/approve?requestId=${requestId}&action=approve`;
+    const rejectUrl = `${appDomain}/api/approve?requestId=${requestId}&action=reject`;
     
     await bot.sendMessage(
       adminChatId,
