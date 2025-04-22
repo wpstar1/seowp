@@ -50,12 +50,11 @@ async function processPaymentRequest(userId, email) {
       
       // 관리자에게 승인 요청 메시지 보내기
       const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
-      const approveUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=approve&userId=${userId}&email=${email}`;
-      const rejectUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=reject&userId=${userId}&email=${email}`;
+      const confirmUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=confirm&userId=${userId}&email=${email}`;
       
       await bot.sendMessage(
         adminChatId,
-        `새로운 VIP 승인 요청:\n이메일: ${email}\n사용자 ID: ${userId}\n\n승인하려면 다음 링크를 클릭하세요:\n${approveUrl}\n\n거절하려면:\n${rejectUrl}`
+        `💰 VIP 승인 요청\n\n사용자 ID: ${userId}\n결제 정보: ${email}\n요청 시간: ${new Date().toLocaleString()}\n\n승인 여부를 결정하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
       );
       
       return `simulatedId_${Date.now()}`;
@@ -74,12 +73,11 @@ async function processPaymentRequest(userId, email) {
     
     // 관리자에게 승인 요청 메시지 보내기
     const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
-    const approveUrl = `${appDomain}/api/approve?requestId=${requestId}&action=approve`;
-    const rejectUrl = `${appDomain}/api/approve?requestId=${requestId}&action=reject`;
+    const confirmUrl = `${appDomain}/api/approve?requestId=${requestId}&action=confirm`;
     
     await bot.sendMessage(
       adminChatId,
-      `새로운 VIP 승인 요청:\n이메일: ${email}\n사용자 ID: ${userId}\n\n승인하려면 다음 링크를 클릭하세요:\n${approveUrl}\n\n거절하려면:\n${rejectUrl}`
+      `💰 VIP 승인 요청\n\n사용자 ID: ${userId}\n결제 정보: ${email}\n요청 시간: ${new Date().toLocaleString()}\n\n승인 여부를 결정하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
     );
     
     return requestId;

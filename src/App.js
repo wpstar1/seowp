@@ -1565,6 +1565,17 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
       </header>
 
       <main className="content">
+        {/* VIP 회원 환영 배너 */}
+        {isLoggedIn && isVip && (
+          <div className="vip-welcome-banner">
+            <div className="vip-icon">👑</div>
+            <div className="vip-message">
+              <h3>VIP 회원님 반갑습니다!</h3>
+              <p>모든 기능을 무제한으로 사용하실 수 있습니다.</p>
+            </div>
+          </div>
+        )}
+        
         {/* 홍보 섹션 */}
         <div className="promo-section">
           <h1>
