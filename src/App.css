@@ -2338,6 +2338,7 @@ input:checked + .toggle-slider:before {
   margin: 0 0 5px 0;
   font-size: 18px;
   font-weight: bold;
+  color: #FFA500; /* 골드 색상으로 변경 */
 }
 
 .vip-message p {
