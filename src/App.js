@@ -72,15 +72,19 @@ function App() {
       setIsLoggedIn(true);
       setUsername(currentUser);
       
-      // 사용자 데이터 로드
+      // 사용자 데이터 로드 - 대소문자 구분 없이 사용자 찾기
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      const user = users.find(u => u.username === currentUser);
+      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
       
       if (user) {
-        // VIP 상태 확인
+        console.log('초기 로딩: 사용자 데이터 확인', user);
+        
+        // VIP 상태 확인 및 설정
         if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+          console.log('초기 로딩: 사용자는 VIP 회원입니다.');
           setIsVip(true);
         } else {
+          console.log('초기 로딩: 사용자는 일반 회원입니다.');
           setIsVip(false);
         }
         
@@ -105,21 +109,37 @@ function App() {
     const checkApprovedUsers = async () => {
       if (!username) return;
       
+      console.log('VIP 상태 확인 중...', username);
       try {
+        // API 호출 전 로컬 스토리지 상태 확인
+        const initialUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+        const initialUser = initialUsers.find(u => u.username === username);
+        console.log('API 호출 전 사용자 상태:', initialUser);
+        
         const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
-        if (!response.ok) return;
+        if (!response.ok) {
+          console.error('API 응답 오류:', response.status);
+          return;
+        }
         
         const data = await response.json();
+        console.log('API 응답 데이터:', data);
         
         if (data.success && Array.isArray(data.approvedUsers)) {
-          const approvedUser = data.approvedUsers.find(u => u.userId === username);
+          // 대소문자 구분 없이 비교
+          const approvedUser = data.approvedUsers.find(u => 
+            u.userId.toLowerCase() === username.toLowerCase()
+          );
+          console.log('승인된 사용자 찾기 결과:', approvedUser);
           
           if (approvedUser && approvedUser.approvalStatus === 'approved') {
             console.log('VIP 승인 상태 확인됨:', approvedUser);
             
             // 현재 사용자가 VIP가 아니라면 업데이트
             const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-            const userIndex = users.findIndex(u => u.username === username);
+            // 대소문자 구분 없이 사용자 찾기
+            const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+            console.log('사용자 인덱스:', userIndex);
             
             if (userIndex !== -1) {
               // 사용자 VIP 상태 업데이트
@@ -127,13 +147,20 @@ function App() {
               const expiryDate = new Date(today);
               expiryDate.setDate(today.getDate() + 30); // 30일 후
               
+              // 기존 사용자 데이터 백업
+              const beforeUpdate = {...users[userIndex]};
+              console.log('업데이트 전 사용자 데이터:', beforeUpdate);
+              
               users[userIndex].membershipType = 'vip';
               users[userIndex].vipStatus = 'approved';
               users[userIndex].membershipExpiry = expiryDate.toISOString();
               users[userIndex].updatedAt = new Date().toISOString();
               
+              console.log('업데이트 후 사용자 데이터:', users[userIndex]);
+              
               // 로컬 스토리지 업데이트
               localStorage.setItem('smart_content_users', JSON.stringify(users));
+              console.log('로컬 스토리지 업데이트 완료');
               
               // 현재 사용자 정보 업데이트
               const updatedUser = {...users[userIndex]};
@@ -141,6 +168,19 @@ function App() {
               setIsLoggedIn(true);
               setUsername(updatedUser.username);
               setIsVip(true);  // VIP 상태 업데이트
+              console.log('React 상태 업데이트 완료: isVip =', true);
+              
+              // 상태 변경 후 강제로 UI 업데이트를 위한 추가 처리
+              setTimeout(() => {
+                // 상태가 제대로 반영되었는지 다시 확인
+                console.log('타임아웃 후 VIP 상태 다시 확인:', isVip);
+                
+                // 상태가 false로 남아있다면 강제로 다시 설정
+                if (!isVip) {
+                  console.log('강제 VIP 상태 업데이트 적용');
+                  setIsVip(true);
+                }
+              }, 500);
             }
           }
         }
@@ -1161,9 +1201,12 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
       return;
     }
     
-    // 사용자 정보 확인
+    // 사용자 정보 확인 - 대소문자 구분 없이 사용자명 비교
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = users.find(u => 
+      u.username.toLowerCase() === username.toLowerCase() && 
+      u.password === password
+    );
     
     if (!user) {
       setAuthError('아이디 또는 비밀번호가 올바르지 않습니다');
@@ -1171,9 +1214,19 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     }
     
     // 로그인 성공
-    localStorage.setItem('smart_content_current_user', username);
+    localStorage.setItem('smart_content_current_user', user.username); // 정확한 대소문자 사용
     setIsLoggedIn(true);
     setShowLoginModal(false);
+    
+    // VIP 상태 확인 및 설정
+    if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+      console.log('로그인: 사용자는 VIP 회원입니다.');
+      setIsVip(true);
+    } else {
+      console.log('로그인: 사용자는 일반 회원입니다.');
+      setIsVip(false);
+    }
+    
     setAuthError("");
   };
   
@@ -1249,9 +1302,13 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     const currentUser = localStorage.getItem('smart_content_current_user');
     if (currentUser) {
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      const user = users.find(u => u.username === currentUser);
+      // 대소문자 구분 없이 사용자 찾기
+      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
       
-      return user && user.membershipType === 'vip' && user.vipStatus === 'approved';
+      const isUserVip = user && user.membershipType === 'vip' && user.vipStatus === 'approved';
+      console.log('VIP 상태 체크 결과:', isUserVip, user);
+      
+      return isUserVip;
     }
     return false;
   };
