@@ -115,6 +115,65 @@ function App() {
     setTodaysKeyword(getRandomKeywordForToday());
   }, []);
 
+  // 승인된 사용자 목록을 정기적으로 확인하고 VIP 상태를 업데이트하는 기능 추가
+  useEffect(() => {
+    const checkApprovedUsers = async () => {
+      if (!username) return;
+      
+      try {
+        const response = await fetch('https://seo-fndz.vercel.app/api/approved-users');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.approvedUsers)) {
+          const approvedUser = data.approvedUsers.find(u => u.userId === username);
+          
+          if (approvedUser && approvedUser.approvalStatus === 'approved') {
+            console.log('VIP 승인 상태 확인됨:', approvedUser);
+            
+            // 현재 사용자가 VIP가 아니라면 업데이트
+            const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+            const userIndex = users.findIndex(u => u.username === username);
+            
+            if (userIndex !== -1) {
+              // 사용자 VIP 상태 업데이트
+              const today = new Date();
+              const expiryDate = new Date(today);
+              expiryDate.setDate(today.getDate() + 30); // 30일 후
+              
+              users[userIndex].membershipType = 'vip';
+              users[userIndex].vipStatus = 'approved';
+              users[userIndex].membershipExpiry = expiryDate.toISOString();
+              users[userIndex].updatedAt = new Date().toISOString();
+              
+              // 로컬 스토리지 업데이트
+              localStorage.setItem('smart_content_users', JSON.stringify(users));
+              
+              // 현재 사용자 정보 업데이트
+              const updatedUser = {...users[userIndex]};
+              
+              setIsLoggedIn(true);
+              setUsername(updatedUser.username);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('승인 상태 확인 중 오류:', error);
+      }
+    };
+    
+    // 페이지 로드 시 즉시 확인
+    checkApprovedUsers();
+    
+    // 1분마다 주기적으로 확인
+    const intervalId = setInterval(checkApprovedUsers, 60000);
+    
+    return () => {
+      clearInterval(intervalId); // 컴포넌트 언마운트 시 인터벌 제거
+    };
+  }, [username]);
+
   // 과거 사용 키워드 기반 추천 키워드 생성
   const generateRecentKeywordRecommendations = () => {
     const currentUser = localStorage.getItem('smart_content_current_user');
@@ -2568,17 +2627,17 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                   </div>
                   <p>예금주: 이경형</p>
                   <p>입금 후 아래 버튼을 클릭하여 신청하세요.</p>
-                  <p className="test-mode-notice">* vip 회원은 이미지 등 제한없이 사용 가능 합니다</p>
+                  <p className="test-mode-notice">* 입금시 예금자명을 예금주와 아이디를 모두써서 보내주세요</p>
                 </div>
                 
                 <div className="vip-upgrade-form">
                   <div className="form-group">
-                    <label>예금주 이름</label>
+                    <label>예금주와 id</label>
                     <input 
                       type="text" 
                       value={depositName} 
                       onChange={(e) => setDepositName(e.target.value)} 
-                      placeholder="예금주 이름을 입력하세요"
+                      placeholder="예금주와 id 입력하세요"
                     />
                   </div>
                 </div>
@@ -2589,8 +2648,8 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                     disabled={!depositName.trim()}
                     onClick={(event) => {
                       if (!depositName.trim()) {
-                        alert('예금주 이름을 입력해주세요.');
-                        return;
+                        alert('예금주와 id 입력해주세요.');
+와                         return;
                       }
                       
                       // 확인 팝업 표시

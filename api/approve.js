@@ -50,6 +50,37 @@ module.exports = async (req, res) => {
     console.log(`- 사용자 ID: ${userId || '알 수 없음'}`);
     console.log(`- 이메일: ${email || '알 수 없음'}`);
     
+    // 승인된 경우 approved-users API에 사용자 추가
+    if (isApproved && userId) {
+      try {
+        // 내부 API 호출 (서버 내부에서)
+        const approvedUsersUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://seo-fndz.vercel.app'}/api/approved-users`;
+        
+        // fetch API 사용
+        const fetchOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId,
+            approvalId: requestId,
+            approvalStatus: 'approved'
+          })
+        };
+        
+        // 비동기 호출 (응답 대기하지 않음)
+        fetch(approvedUsersUrl, fetchOptions)
+          .then(response => response.json())
+          .then(data => console.log('사용자 승인 처리 결과:', data))
+          .catch(error => console.error('사용자 승인 처리 중 오류:', error));
+          
+        console.log('사용자 승인 요청 전송:', approvedUsersUrl);
+      } catch (error) {
+        console.error('승인 사용자 등록 중 오류:', error);
+      }
+    }
+    
     // 관리자에게 HTML 응답
     if (isApproved) {
       return res.send(`
