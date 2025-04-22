@@ -47,6 +47,7 @@ function App() {
   // VIP 신청 정보
   const [depositName, setDepositName] = useState('');
   const [vipRequestStatus, setVipRequestStatus] = useState(''); // 'pending', 'approved', 'rejected'
+  const [isVip, setIsVip] = useState(false);  // VIP 상태 추가
 
   // 가독성 점수 관련 상태 추가
   const [readabilityScore, setReadabilityScore] = useState(null);
@@ -71,32 +72,16 @@ function App() {
       setIsLoggedIn(true);
       setUsername(currentUser);
       
-      // VIP 승인 상태 확인
+      // 사용자 데이터 로드
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
       const user = users.find(u => u.username === currentUser);
       
       if (user) {
-        // VIP 신청이 승인된 경우 팝업 표시
-        if (user.vipRequest && user.vipRequest.status === 'approved' && !user.vipRequest.notificationShown) {
-          setTimeout(() => {
-            alert('축하합니다! VIP 회원 신청이 승인되었습니다.\n30일간 모든 기능을 무제한으로 사용하실 수 있습니다.');
-            
-            // 알림 표시 상태 업데이트
-            const updatedUsers = [...users];
-            const userIndex = users.findIndex(u => u.username === currentUser);
-            
-            if (userIndex >= 0) {
-              updatedUsers[userIndex] = {
-                ...updatedUsers[userIndex],
-                vipRequest: {
-                  ...updatedUsers[userIndex].vipRequest,
-                  notificationShown: true
-                }
-              };
-              
-              localStorage.setItem('smart_content_users', JSON.stringify(updatedUsers));
-            }
-          }, 1000); // 1초 후 팝업 표시
+        // VIP 상태 확인
+        if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+          setIsVip(true);
+        } else {
+          setIsVip(false);
         }
         
         // 저장된 링크 로드
@@ -155,6 +140,7 @@ function App() {
               
               setIsLoggedIn(true);
               setUsername(updatedUser.username);
+              setIsVip(true);  // VIP 상태 업데이트
             }
           }
         }
@@ -1264,6 +1250,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     if (currentUser) {
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
       const user = users.find(u => u.username === currentUser);
+      
       return user && user.membershipType === 'vip' && user.vipStatus === 'approved';
     }
     return false;
@@ -1487,12 +1474,14 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
         </div>
         {isLoggedIn ? (
           <div className="header-actions">
-            <button 
-              className="vip-button"
-              onClick={() => setShowVipModal(true)}
-            >
-              VIP 신청
-            </button>
+            {!isVip && (  // VIP가 아닌 경우만 VIP 신청 버튼 표시
+              <button 
+                className="vip-button"
+                onClick={() => setShowVipModal(true)}
+              >
+                VIP 신청
+              </button>
+            )}
             <button 
               className="login-button"
               onClick={handleLogout}
@@ -2593,6 +2582,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
               <button 
                 className="close-button"
                 onClick={() => setShowVipModal(false)}
+                style={{ padding: '8px 12px', fontSize: '18px' }}  // 모바일에서 더 큰 X 버튼
               >
                 ✕
               </button>
