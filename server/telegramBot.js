@@ -1,25 +1,67 @@
 const TelegramBot = require('node-telegram-bot-api');
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json');
 
 // Firebase Admin 초기화
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+let firebaseInitialized = false;
 
-const db = admin.firestore();
+try {
+  // 환경 변수에서 서비스 계정 정보 가져오기 시도
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    firebaseInitialized = true;
+    console.log('Firebase가 환경 변수를 통해 초기화되었습니다.');
+  } 
+  // 로컬 파일에서 서비스 계정 정보 가져오기 시도 (개발 환경용)
+  else {
+    try {
+      const serviceAccount = require('./serviceAccountKey.json');
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      firebaseInitialized = true;
+      console.log('Firebase가 로컬 파일을 통해 초기화되었습니다.');
+    } catch (localError) {
+      console.warn('serviceAccountKey.json 파일을 찾을 수 없습니다. Firebase 기능이 제한됩니다:', localError.message);
+    }
+  }
+} catch (error) {
+  console.error('Firebase 초기화 오류:', error);
+}
+
+// Firestore 데이터베이스 참조
+const db = firebaseInitialized ? admin.firestore() : null;
 
 // 텔레그램 봇 토큰
 const token = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN';
 const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || 'YOUR_ADMIN_CHAT_ID'; // 관리자의 텔레그램 채팅 ID
 
 // 봇 생성
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { polling: process.env.ENABLE_BOT_POLLING === 'true' });
 
 // 승인 요청 처리
 async function processPaymentRequest(userId, email) {
   try {
-    // 고유 요청 ID 생성
+    // Firebase가 초기화되지 않았으면 메시지만 보내기
+    if (!firebaseInitialized) {
+      console.log('Firebase가 초기화되지 않아 데이터베이스 저장은 건너뜁니다.');
+      
+      // 관리자에게 승인 요청 메시지 보내기
+      const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
+      const approveUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=approve&userId=${userId}&email=${email}`;
+      const rejectUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=reject&userId=${userId}&email=${email}`;
+      
+      await bot.sendMessage(
+        adminChatId,
+        `새로운 VIP 승인 요청:\n이메일: ${email}\n사용자 ID: ${userId}\n\n승인하려면 다음 링크를 클릭하세요:\n${approveUrl}\n\n거절하려면:\n${rejectUrl}`
+      );
+      
+      return `simulatedId_${Date.now()}`;
+    }
+
+    // Firebase가 초기화된 경우 정상 처리
     const requestId = `req_${Date.now()}_${userId}`;
     
     // 사용자 승인 요청을 Firestore에 저장
@@ -50,6 +92,11 @@ async function processPaymentRequest(userId, email) {
 // 웹훅 라우트로 승인/거절 처리
 async function handleApproval(requestId, isApproved) {
   try {
+    if (!firebaseInitialized) {
+      console.log('Firebase가 초기화되지 않아 승인 처리는 건너뜁니다.');
+      return false;
+    }
+
     const requestRef = db.collection('approvalRequests').doc(requestId);
     const request = await requestRef.get();
     
@@ -112,6 +159,11 @@ async function handleApproval(requestId, isApproved) {
 
 // 30일 이후 멤버십 만료 처리 (Cloud Function으로 구현 예정)
 async function checkExpiredMemberships() {
+  if (!firebaseInitialized) {
+    console.log('Firebase가 초기화되지 않아 멤버십 만료 확인은 건너뜁니다.');
+    return;
+  }
+
   const now = admin.firestore.Timestamp.now();
   
   try {
