@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
     if (isApproved && userId) {
       try {
         // 내부 API 호출 (서버 내부에서)
-        const approvedUsersUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://seo-fndz.vercel.app'}/api/approved-users`;
+        const approvedUsersUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://seo-beige.vercel.app'}/api/approved-users`;
         
         // fetch API 사용
         const fetchOptions = {
