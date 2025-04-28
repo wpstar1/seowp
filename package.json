@@ -3,6 +3,7 @@
   "version": "4.0.1",
   "description": "SEO 콘텐츠 생성 도구 - VIP 승인 시스템 개선, UI 업데이트",
   "private": true,
+  "homepage": "./",
   "dependencies": {
     "axios": "^1.6.0",
     "firebase": "^11.6.0",
