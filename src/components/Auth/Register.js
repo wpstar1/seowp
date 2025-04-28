@@ -36,8 +36,8 @@ const Register = () => {
       const result = await register(username, password);
       
       if (result.success) {
-        // 회원가입 성공, 로그인 페이지로 이동
-        navigate('/login', { state: { message: '회원가입이 완료되었습니다. 로그인해주세요.' } });
+        // 회원가입 성공, 대시보드로 바로 이동
+        navigate('/dashboard');
       } else {
         setError(result.error || '회원가입 중 오류가 발생했습니다');
       }

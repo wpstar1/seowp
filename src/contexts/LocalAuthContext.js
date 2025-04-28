@@ -81,6 +81,10 @@ export const AuthProvider = ({ children }) => {
       users.push(newUser);
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
       
+      // 자동 로그인 처리
+      localStorage.setItem(CURRENT_USER_KEY, username);
+      setCurrentUser(newUser);
+      
       return { success: true };
     } catch (error) {
       setError(error.message);
