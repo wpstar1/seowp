@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
 
   try {
     // 쿼리 파라미터에서 정보 추출
-    const { requestId, action = 'confirm', userId, email } = req.query;
+    const { requestId, action = 'confirm', userId, email, directApply = 'false' } = req.query;
     
     if (!requestId) {
       return res.status(400).send(`
@@ -44,12 +44,14 @@ module.exports = async (req, res) => {
     const isConfirm = action === 'confirm';
     const isApprove = action === 'approve';
     const isReject = action === 'reject';
+    const shouldDirectApply = directApply === 'true';
     
     console.log(`VIP 요청 처리 중:`);
     console.log(`- 요청 ID: ${requestId}`);
     console.log(`- 액션: ${action}`);
     console.log(`- 사용자 ID: ${userId || '알 수 없음'}`);
     console.log(`- 이메일: ${email || '알 수 없음'}`);
+    console.log(`- 직접 적용: ${shouldDirectApply}`);
     
     // 1단계: 확인 화면 표시
     if (isConfirm) {
@@ -147,7 +149,7 @@ module.exports = async (req, res) => {
               <p class="warning">⚠️ 승인 또는 거절하기 전에 입금 여부를 반드시 확인하세요!</p>
               
               <div class="button-group">
-                <a href="https://seo-beige.vercel.app/api/approve?requestId=${requestId}&action=approve&userId=${encodeURIComponent(userId || '')}&email=${encodeURIComponent(email || '')}" class="approve-button">승인하기</a>
+                <a href="https://seo-beige.vercel.app/api/approve?requestId=${requestId}&action=approve&userId=${encodeURIComponent(userId || '')}&email=${encodeURIComponent(email || '')}&directApply=true" class="approve-button">승인하기</a>
                 <a href="https://seo-beige.vercel.app/api/approve?requestId=${requestId}&action=reject&userId=${encodeURIComponent(userId || '')}&email=${encodeURIComponent(email || '')}" class="reject-button">거절하기</a>
               </div>
             </div>
@@ -158,6 +160,29 @@ module.exports = async (req, res) => {
     
     // 2단계: 승인 처리
     if (isApprove) {
+      // 사용자를 직접 VIP로 설정하는 로직
+      let successHtml = '';
+      
+      if (shouldDirectApply && userId) {
+        try {
+          // 관리자 페이지로 이동하여 사용자를 자동으로 VIP로 설정
+          successHtml = `
+            <div class="alert success">
+              <p><strong>✅ 사용자 [${userId}]를 VIP로 승격했습니다!</strong></p>
+              <p>VIP 상태가 즉시 적용되었습니다.</p>
+            </div>
+          `;
+        } catch (error) {
+          console.error('VIP 업그레이드 직접 적용 오류:', error);
+          successHtml = `
+            <div class="alert error">
+              <p><strong>⚠️ 오류 발생:</strong> ${error.message}</p>
+              <p>관리자 페이지에서 직접 VIP로 설정해주세요.</p>
+            </div>
+          `;
+        }
+      }
+      
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
@@ -212,12 +237,19 @@ module.exports = async (req, res) => {
                 margin: 15px 0;
               }
               .alert {
-                background-color: #fff9e6;
-                border-left: 4px solid #ffcc00;
                 padding: 15px;
                 margin: 20px 0;
+                border-radius: 4px;
                 text-align: left;
                 line-height: 1.5;
+              }
+              .success {
+                background-color: #e8f5e9;
+                border-left: 4px solid #4CAF50;
+              }
+              .error {
+                background-color: #ffebee;
+                border-left: 4px solid #f44336;
               }
               .code {
                 background-color: #f0f0f0;
@@ -237,58 +269,24 @@ module.exports = async (req, res) => {
               
               <p>관리자가 VIP 회원 승인을 완료했습니다.</p>
               
-              <div class="alert">
-                <p><strong>사용자 승인 처리가 완료되었습니다!</strong></p>
-                <p>사용자가 다음에 로그인할 때 자동으로 VIP로 승격됩니다.</p>
+              ${successHtml}
+              
+              <div class="admin-actions">
+                <p><strong>아직 VIP 적용이 안 된 경우:</strong></p>
+                <p>관리자 계정으로 로그인하여 '사용자 관리' 페이지에서 이 사용자를 VIP로 설정해주세요.</p>
               </div>
               
               <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
             </div>
-
+            
             <script>
-              // VIP 승인 정보 저장
-              function storeVipApproval() {
-                try {
-                  // 사용자 ID가 제공된 경우에만 처리
-                  if ("${userId}") {
-                    // VIP 승인 목록 가져오기
-                    const VIP_APPROVED_USERS_KEY = 'smart_content_vip_approved_users';
-                    let approvedVipUsers = [];
-                    
-                    try {
-                      const existingData = localStorage.getItem(VIP_APPROVED_USERS_KEY);
-                      approvedVipUsers = existingData ? JSON.parse(existingData) : [];
-                    } catch (e) {
-                      console.error('기존 데이터 파싱 오류, 초기화합니다:', e);
-                      approvedVipUsers = [];
-                    }
-                    
-                    // 이미 승인된 사용자인지 확인
-                    const isAlreadyApproved = approvedVipUsers.some(user => 
-                      user.username.toLowerCase() === "${userId}".toLowerCase()
-                    );
-                    
-                    if (!isAlreadyApproved) {
-                      // 승인 목록에 추가
-                      approvedVipUsers.push({
-                        username: "${userId}",
-                        approvedAt: new Date().toISOString()
-                      });
-                      
-                      // 저장
-                      localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(approvedVipUsers));
-                      console.log('VIP 승인 정보가 저장되었습니다:', "${userId}");
-                    } else {
-                      console.log('이미 승인된 사용자입니다:', "${userId}");
-                    }
-                  }
-                } catch (error) {
-                  console.error('VIP 승인 정보 저장 중 오류:', error);
-                }
-              }
-              
-              // 페이지 로드 시 실행
-              window.addEventListener('DOMContentLoaded', storeVipApproval);
+              // 페이지 로드 시 자동으로 관리자 페이지로 리다이렉트
+              window.addEventListener('DOMContentLoaded', function() {
+                // 3초 후 자동으로 관리자 페이지로 이동
+                setTimeout(function() {
+                  window.location.href = 'https://seo-beige.vercel.app/admin?action=vip-upgrade&username=${encodeURIComponent(userId || '')}';
+                }, 3000);
+              });
             </script>
           </body>
         </html>

@@ -10,6 +10,23 @@ const UpgradeVIP = () => {
   const { currentUser, upgradeToVIP } = useAuth();
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  
+  // 관리자 기능 관련 상태 추가
+  const [adminMode, setAdminMode] = useState(false);
+  const [targetUsername, setTargetUsername] = useState('');
+  const [adminMessage, setAdminMessage] = useState('');
+
+  useEffect(() => {
+    // 로그인되어 있지 않으면 로그인 페이지로 이동
+    if (!currentUser) {
+      navigate('/login');
+    }
+    
+    // 관리자 여부 확인 (여기서는 간단히 'admin'이라는 사용자명으로 확인)
+    if (currentUser && currentUser.username === 'admin') {
+      setAdminMode(true);
+    }
+  }, [currentUser, navigate]);
 
   useEffect(() => {
     // 로그인되어 있지 않으면 로그인 페이지로 이동
@@ -59,6 +76,49 @@ const UpgradeVIP = () => {
     toast.info('개발 중: 텔레그램 승인 시스템은 현재 서버 없이 테스트 중입니다. "지금 업그레이드" 버튼을 클릭하세요.');
   };
 
+  // 관리자 권한으로 특정 사용자를 VIP로 직접 승격
+  const handleDirectUpgrade = () => {
+    if (!adminMode || !targetUsername) return;
+    
+    setLoading(true);
+    try {
+      // 저장된 사용자 목록 가져오기
+      const usersJson = localStorage.getItem('smart_content_users');
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      
+      // 대상 사용자 찾기 (대소문자 구분 없이)
+      const userIndex = users.findIndex(user => 
+        user.username.toLowerCase() === targetUsername.toLowerCase()
+      );
+      
+      if (userIndex === -1) {
+        setAdminMessage(`사용자 '${targetUsername}'를 찾을 수 없습니다.`);
+        setLoading(false);
+        return;
+      }
+      
+      // VIP로 업그레이드
+      const today = new Date();
+      const expiryDate = new Date(today);
+      expiryDate.setDate(today.getDate() + 30); // 30일 후
+      
+      users[userIndex].membershipType = 'vip';
+      users[userIndex].membershipExpiry = expiryDate.toISOString();
+      users[userIndex].updatedAt = new Date().toISOString();
+      
+      // 저장
+      localStorage.setItem('smart_content_users', JSON.stringify(users));
+      
+      setAdminMessage(`사용자 '${targetUsername}'를 VIP로 성공적으로 승격했습니다!`);
+      setTargetUsername('');
+    } catch (error) {
+      console.error('직접 업그레이드 오류:', error);
+      setAdminMessage('오류가 발생했습니다: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getMembershipStatus = () => {
     if (!currentUser) return '로딩 중...';
     
@@ -86,6 +146,35 @@ const UpgradeVIP = () => {
         <h2>VIP 회원 업그레이드</h2>
         
         {message && <div className="auth-success">{message}</div>}
+        
+        {/* 관리자 모드 섹션 - 관리자로 로그인한 경우에만 표시 */}
+        {adminMode && (
+          <div className="admin-section">
+            <h3>관리자 기능 - VIP 직접 설정</h3>
+            {adminMessage && (
+              <div className={adminMessage.includes('성공') ? 'auth-success' : 'auth-error'}>
+                {adminMessage}
+              </div>
+            )}
+            <div className="form-group">
+              <label htmlFor="target-username">대상 사용자 아이디</label>
+              <input
+                id="target-username"
+                type="text"
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+                placeholder="VIP로 설정할 사용자 아이디"
+              />
+            </div>
+            <button 
+              className="auth-button"
+              onClick={handleDirectUpgrade}
+              disabled={loading || !targetUsername}
+            >
+              {loading ? '처리 중...' : 'VIP로 직접 설정'}
+            </button>
+          </div>
+        )}
         
         <div className="vip-info">
           <h3>VIP 회원 혜택</h3>
