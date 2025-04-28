@@ -14,20 +14,54 @@ const USERS_KEY = 'smart_content_users';
 const CURRENT_USER_KEY = 'smart_content_current_user';
 const VIP_APPROVED_USERS_KEY = 'smart_content_vip_approved_users';
 
-// 로컬 스토리지 헬퍼 함수 추가
+// 로컬 스토리지 헬퍼 함수 개선
 const getUsers = () => {
   try {
     const usersJson = localStorage.getItem(USERS_KEY);
-    return usersJson ? JSON.parse(usersJson) : [];
+    console.log('로컬 스토리지에서 사용자 데이터 로드:', usersJson ? '데이터 있음' : '데이터 없음');
+    
+    if (!usersJson) {
+      console.log('사용자 데이터가 없어 빈 배열 초기화');
+      localStorage.setItem(USERS_KEY, JSON.stringify([]));
+      return [];
+    }
+    
+    const parsedUsers = JSON.parse(usersJson);
+    console.log(`파싱된 사용자 수: ${parsedUsers.length}`);
+    return parsedUsers;
   } catch (e) {
     console.error('로컬 스토리지 데이터 파싱 오류:', e);
+    // 오류 발생 시 로컬 스토리지 초기화
+    try {
+      localStorage.setItem(USERS_KEY, JSON.stringify([]));
+    } catch (storageError) {
+      console.error('로컬 스토리지 초기화 실패:', storageError);
+    }
     return [];
   }
 };
 
 const saveUsers = (users) => {
   try {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    console.log(`저장할 사용자 수: ${users.length}`);
+    
+    // 유효성 검사 추가
+    if (!Array.isArray(users)) {
+      console.error('유효하지 않은 사용자 데이터:', users);
+      return false;
+    }
+    
+    const usersJson = JSON.stringify(users);
+    localStorage.setItem(USERS_KEY, usersJson);
+    
+    // 저장 확인
+    const savedJson = localStorage.getItem(USERS_KEY);
+    if (!savedJson) {
+      console.error('저장 실패: 데이터를 찾을 수 없음');
+      return false;
+    }
+    
+    console.log('로컬 스토리지 저장 성공');
     return true;
   } catch (e) {
     console.error('로컬 스토리지 저장 오류:', e);
@@ -467,6 +501,7 @@ export const AuthProvider = ({ children }) => {
   // 회원가입
   const register = async (username, password) => {
     setError('');
+    console.log('회원가입 시도:', username);
     
     try {
       // 아이디 길이 검증
@@ -481,7 +516,11 @@ export const AuthProvider = ({ children }) => {
       
       // 기존 사용자 확인
       const users = getUsers();
-      const existingUser = users.find(user => user.username === username);
+      console.log('현재 저장된 사용자 수:', users.length);
+      
+      const existingUser = users.find(user => 
+        user.username.toLowerCase() === username.toLowerCase()
+      );
       
       if (existingUser) {
         throw new Error('이미 사용 중인 아이디입니다');
@@ -495,12 +534,22 @@ export const AuthProvider = ({ children }) => {
         membershipType: 'regular',
         dailyUsageCount: 0,
         lastUsageDate: null,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
+      
+      console.log('신규 사용자 객체 생성:', newUser);
       
       // 사용자 저장
       users.push(newUser);
-      saveUsers(users);
+      const saveResult = saveUsers(users);
+      
+      if (!saveResult) {
+        console.error('사용자 저장 실패');
+        throw new Error('사용자 정보 저장에 실패했습니다');
+      }
+      
+      console.log('사용자 저장 성공. 로컬 스토리지 확인:', localStorage.getItem(USERS_KEY));
       
       // 자동 로그인 처리
       localStorage.setItem(CURRENT_USER_KEY, username);
@@ -508,6 +557,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      console.error('회원가입 오류:', error);
       setError(error.message);
       return { success: false, error: error.message };
     }

@@ -165,43 +165,13 @@ module.exports = async (req, res) => {
       
       if (userId) {
         try {
-          // 저장된 사용자 목록 가져오기
-          const usersJson = localStorage.getItem('smart_content_users');
-          const users = usersJson ? JSON.parse(usersJson) : [];
-          
-          // 대상 사용자 찾기 (대소문자 구분 없이)
-          const userIndex = users.findIndex(user => 
-            user.username.toLowerCase() === userId.toLowerCase()
-          );
-          
-          if (userIndex !== -1) {
-            // VIP로 업그레이드
-            const today = new Date();
-            const expiryDate = new Date(today);
-            expiryDate.setDate(today.getDate() + 30); // 30일 후
-            
-            users[userIndex].membershipType = 'vip';
-            users[userIndex].membershipExpiry = expiryDate.toISOString();
-            users[userIndex].vipStatus = 'approved';
-            users[userIndex].updatedAt = new Date().toISOString();
-            
-            // 저장
-            localStorage.setItem('smart_content_users', JSON.stringify(users));
-            
-            successHtml = `
-              <div class="alert success">
-                <p><strong>✅ 사용자 [${userId}]를 VIP로 승격했습니다!</strong></p>
-                <p>VIP 상태가 즉시 적용되었습니다.</p>
-              </div>
-            `;
-          } else {
-            successHtml = `
-              <div class="alert error">
-                <p><strong>⚠️ 사용자를 찾을 수 없습니다</strong></p>
-                <p>관리자 페이지에서 직접 VIP로 설정해주세요.</p>
-              </div>
-            `;
-          }
+          // 클라이언트 측에서 로컬 스토리지를 업데이트하기 위한 스크립트 제공
+          successHtml = `
+            <div class="alert success">
+              <p><strong>✅ 사용자 [${userId}]의 VIP 승인이 완료되었습니다!</strong></p>
+              <p>다음 로그인 시 VIP 상태가 적용됩니다.</p>
+            </div>
+          `;
         } catch (error) {
           console.error('VIP 업그레이드 직접 적용 오류:', error);
           successHtml = `
@@ -303,18 +273,109 @@ module.exports = async (req, res) => {
               
               <div class="admin-actions">
                 <p><strong>아직 VIP 적용이 안 된 경우:</strong></p>
-                <p>관리자 계정으로 로그인하여 '사용자 관리' 페이지에서 이 사용자를 VIP로 설정해주세요.</p>
+                <p>관리자 계정(1111)으로 로그인하여 '관리자 페이지'에서 이 사용자를 VIP로 설정해주세요.</p>
               </div>
               
               <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
             </div>
             
             <script>
-              // 페이지 로드 시 자동으로 관리자 페이지로 리다이렉트
+              // VIP 승인 정보 저장
+              function storeVipApproval() {
+                try {
+                  const username = "${userId}";
+                  if (!username) {
+                    console.error('사용자 아이디가 제공되지 않았습니다.');
+                    return;
+                  }
+                  
+                  // 1. 사용자 목록 가져오기
+                  const USERS_KEY = 'smart_content_users';
+                  let users = [];
+                  
+                  try {
+                    const usersJson = localStorage.getItem(USERS_KEY);
+                    if (usersJson) {
+                      users = JSON.parse(usersJson);
+                      console.log('로컬 스토리지에서 사용자 목록 로드 완료:', users.length);
+                    } else {
+                      console.warn('로컬 스토리지에 사용자 목록이 없습니다.');
+                    }
+                  } catch (error) {
+                    console.error('사용자 목록 로드 오류:', error);
+                  }
+                  
+                  // 2. 사용자 찾기
+                  const userIndex = users.findIndex(user => 
+                    user.username.toLowerCase() === username.toLowerCase()
+                  );
+                  
+                  if (userIndex === -1) {
+                    console.error('사용자를 찾을 수 없습니다:', username);
+                    return;
+                  }
+                  
+                  // 3. VIP로 업그레이드
+                  console.log('사용자 찾음, VIP 업그레이드 중:', users[userIndex]);
+                  
+                  const today = new Date();
+                  const expiryDate = new Date(today);
+                  expiryDate.setDate(today.getDate() + 30); // 30일 후
+                  
+                  users[userIndex].membershipType = 'vip';
+                  users[userIndex].vipStatus = 'approved';
+                  users[userIndex].membershipExpiry = expiryDate.toISOString();
+                  users[userIndex].updatedAt = new Date().toISOString();
+                  
+                  // 4. 저장
+                  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+                  console.log('VIP 승격 처리 완료:', users[userIndex]);
+                  
+                  // 5. 승인 정보 저장 (중복 대비)
+                  try {
+                    const VIP_APPROVED_USERS_KEY = 'smart_content_vip_approved_users';
+                    let approvedVipUsers = [];
+                    
+                    const existingData = localStorage.getItem(VIP_APPROVED_USERS_KEY);
+                    if (existingData) {
+                      approvedVipUsers = JSON.parse(existingData);
+                    }
+                    
+                    // 이미 승인된 사용자인지 확인
+                    const isAlreadyApproved = approvedVipUsers.some(user => 
+                      user.username.toLowerCase() === username.toLowerCase()
+                    );
+                    
+                    if (!isAlreadyApproved) {
+                      // 승인 목록에 추가
+                      approvedVipUsers.push({
+                        username: username,
+                        approvedAt: new Date().toISOString()
+                      });
+                      
+                      // 저장
+                      localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(approvedVipUsers));
+                      console.log('VIP 승인 목록에 추가 완료:', username);
+                    } else {
+                      console.log('이미 승인 목록에 존재함:', username);
+                    }
+                  } catch (error) {
+                    console.error('VIP 승인 목록 저장 오류:', error);
+                  }
+                } catch (error) {
+                  console.error('VIP 승인 처리 중 오류 발생:', error);
+                }
+              }
+              
+              // 페이지 로드 시 실행
               window.addEventListener('DOMContentLoaded', function() {
-                // 3초 후 자동으로 관리자 페이지로 이동
+                console.log('VIP 승인 페이지 로드됨, 승인 처리 시작...');
+                storeVipApproval();
+                
+                // 3초 후 홈페이지로 자동 이동
                 setTimeout(function() {
-                  window.location.href = 'https://seo-beige.vercel.app/admin?action=vip-upgrade&username=${encodeURIComponent(userId || '')}';
+                  console.log('홈페이지로 이동...');
+                  window.location.href = 'https://seo-beige.vercel.app/admin-dashboard?action=vip-upgrade&username=${encodeURIComponent(userId || '')}';
                 }, 3000);
               });
             </script>
