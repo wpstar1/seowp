@@ -193,65 +193,58 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 회원가입
-  const register = async (username, password) => {
-    setError('');
-    
-    try {
-      // 아이디 길이 검증
-      if (username.length < 3) {
-        throw new Error('아이디는 3자 이상이어야 합니다');
-      }
-      
-      // 비밀번호 길이 검증
-      if (password.length < 4) {
-        throw new Error('비밀번호는 4자 이상이어야 합니다');
-      }
-      
-      // 기존 사용자 확인
-      const users = getUsers();
-      const existingUser = users.find(user => user.username === username);
-      
-      if (existingUser) {
-        throw new Error('이미 사용 중인 아이디입니다');
-      }
-      
-      // 새 사용자 생성
-      const newUser = {
-        id: Date.now().toString(),
-        username,
-        password, // 실제 서비스에서는 비밀번호 해싱 필요
-        membershipType: 'regular',
-        dailyUsageCount: 0,
-        lastUsageDate: null,
-        createdAt: new Date().toISOString()
-      };
-      
-      // 사용자 저장
-      users.push(newUser);
-      saveUsers(users);
-      
-      // 자동 로그인 처리
-      localStorage.setItem(CURRENT_USER_KEY, username);
-      setCurrentUser(newUser);
-      
-      return { success: true };
-    } catch (error) {
-      setError(error.message);
-      return { success: false, error: error.message };
-    }
+  // 관리자 여부 확인 함수 추가
+  const isAdmin = () => {
+    if (!currentUser) return false;
+    return currentUser.username === '1111'; // 관리자 아이디는 1111
   };
 
-  // 로그인
-  const login = async (username, password) => {
-    setError('');
-    
+  // 로그인 함수
+  const login = (username, password) => {
     try {
       console.log('로그인 시도:', username);
       
-      // 사용자 찾기
-      const users = getUsers();
-      console.log('저장된 사용자 수:', users.length);
+      // 관리자 계정 체크 (아이디 1111, 비번 1111)
+      if (username === '1111' && password === '1111') {
+        console.log('관리자 로그인 성공');
+        
+        // 로컬 스토리지에서 사용자 목록 로드
+        const usersJson = localStorage.getItem('smart_content_users');
+        const users = usersJson ? JSON.parse(usersJson) : [];
+        
+        // 관리자 사용자가 없는 경우 생성
+        let adminUser = users.find(u => u.username === '1111');
+        
+        if (!adminUser) {
+          adminUser = {
+            username: '1111',
+            password: '1111', // 실제 앱에서는 해시 처리 필요
+            email: 'admin@example.com',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            membershipType: 'admin',
+            isAdmin: true
+          };
+          
+          users.push(adminUser);
+          localStorage.setItem('smart_content_users', JSON.stringify(users));
+        }
+        
+        setCurrentUser(adminUser);
+        localStorage.setItem('smart_content_current_user', adminUser.username);
+        
+        return { success: true, message: '관리자 로그인 성공!' };
+      }
+      
+      // 일반 사용자 로그인 처리
+      const usersJson = localStorage.getItem('smart_content_users');
+      if (!usersJson) {
+        console.error('저장된 사용자가 없습니다.');
+        return { success: false, message: '저장된 사용자가 없습니다.' };
+      }
+      
+      // 사용자 목록 파싱
+      const users = JSON.parse(usersJson);
       
       // 사용자 이름으로 검색 (대소문자 구분 없이)
       const user = users.find(user => 
@@ -471,6 +464,55 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 회원가입
+  const register = async (username, password) => {
+    setError('');
+    
+    try {
+      // 아이디 길이 검증
+      if (username.length < 3) {
+        throw new Error('아이디는 3자 이상이어야 합니다');
+      }
+      
+      // 비밀번호 길이 검증
+      if (password.length < 4) {
+        throw new Error('비밀번호는 4자 이상이어야 합니다');
+      }
+      
+      // 기존 사용자 확인
+      const users = getUsers();
+      const existingUser = users.find(user => user.username === username);
+      
+      if (existingUser) {
+        throw new Error('이미 사용 중인 아이디입니다');
+      }
+      
+      // 새 사용자 생성
+      const newUser = {
+        id: Date.now().toString(),
+        username,
+        password, // 실제 서비스에서는 비밀번호 해싱 필요
+        membershipType: 'regular',
+        dailyUsageCount: 0,
+        lastUsageDate: null,
+        createdAt: new Date().toISOString()
+      };
+      
+      // 사용자 저장
+      users.push(newUser);
+      saveUsers(users);
+      
+      // 자동 로그인 처리
+      localStorage.setItem(CURRENT_USER_KEY, username);
+      setCurrentUser(newUser);
+      
+      return { success: true };
+    } catch (error) {
+      setError(error.message);
+      return { success: false, error: error.message };
+    }
+  };
+
   // 제공하는 값
   const value = {
     currentUser,
@@ -481,6 +523,7 @@ export const AuthProvider = ({ children }) => {
     incrementUsage,
     upgradeToVIP,
     approveVipUser,
+    isAdmin,
     loading,
     error
   };

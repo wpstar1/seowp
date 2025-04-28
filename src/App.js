@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import Header from './components/Header';
 
 function App() {
   // 상태 관리
@@ -1521,49 +1522,10 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="logo">
-          <span className="logo-dot">🟣</span>
-          <span>워프스타 Content Creator v5</span>
-        </div>
-        <div className="header-info">
-          <span>모바일 AI 콘텐츠 생성기</span>
-        </div>
-        {isLoggedIn ? (
-          <div className="header-actions">
-            {!isVip && (  // VIP가 아닌 경우만 VIP 신청 버튼 표시
-              <button 
-                className="vip-button"
-                onClick={() => setShowVipModal(true)}
-              >
-                VIP 신청
-              </button>
-            )}
-            <button 
-              className="login-button"
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
-          </div>
-        ) : (
-          <div className="header-actions">
-            <button 
-              className="login-button"
-              onClick={() => setShowLoginModal(true)}
-            >
-              로그인
-            </button>
-            <button 
-              className="register-button"
-              onClick={() => setShowRegisterModal(true)}
-            >
-              회원가입
-            </button>
-          </div>
-        )}
-      </header>
-
+      <Header 
+        setShowLoginModal={setShowLoginModal}
+        setShowRegisterModal={setShowRegisterModal}
+      />
       <main className="content">
         {/* VIP 회원 환영 배너 */}
         {isLoggedIn && isVip && (

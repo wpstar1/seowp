@@ -163,15 +163,45 @@ module.exports = async (req, res) => {
       // 사용자를 직접 VIP로 설정하는 로직
       let successHtml = '';
       
-      if (shouldDirectApply && userId) {
+      if (userId) {
         try {
-          // 관리자 페이지로 이동하여 사용자를 자동으로 VIP로 설정
-          successHtml = `
-            <div class="alert success">
-              <p><strong>✅ 사용자 [${userId}]를 VIP로 승격했습니다!</strong></p>
-              <p>VIP 상태가 즉시 적용되었습니다.</p>
-            </div>
-          `;
+          // 저장된 사용자 목록 가져오기
+          const usersJson = localStorage.getItem('smart_content_users');
+          const users = usersJson ? JSON.parse(usersJson) : [];
+          
+          // 대상 사용자 찾기 (대소문자 구분 없이)
+          const userIndex = users.findIndex(user => 
+            user.username.toLowerCase() === userId.toLowerCase()
+          );
+          
+          if (userIndex !== -1) {
+            // VIP로 업그레이드
+            const today = new Date();
+            const expiryDate = new Date(today);
+            expiryDate.setDate(today.getDate() + 30); // 30일 후
+            
+            users[userIndex].membershipType = 'vip';
+            users[userIndex].membershipExpiry = expiryDate.toISOString();
+            users[userIndex].vipStatus = 'approved';
+            users[userIndex].updatedAt = new Date().toISOString();
+            
+            // 저장
+            localStorage.setItem('smart_content_users', JSON.stringify(users));
+            
+            successHtml = `
+              <div class="alert success">
+                <p><strong>✅ 사용자 [${userId}]를 VIP로 승격했습니다!</strong></p>
+                <p>VIP 상태가 즉시 적용되었습니다.</p>
+              </div>
+            `;
+          } else {
+            successHtml = `
+              <div class="alert error">
+                <p><strong>⚠️ 사용자를 찾을 수 없습니다</strong></p>
+                <p>관리자 페이지에서 직접 VIP로 설정해주세요.</p>
+              </div>
+            `;
+          }
         } catch (error) {
           console.error('VIP 업그레이드 직접 적용 오류:', error);
           successHtml = `

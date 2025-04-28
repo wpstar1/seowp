@@ -9,6 +9,7 @@ import Register from './components/Auth/Register';
 import UpgradeVIP from './components/Auth/UpgradeVIP';
 import Logout from './components/Auth/Logout';
 import Admin from './pages/Admin';
+import AdminDashboard from './pages/AdminDashboard';
 
 const container = document.getElementById('root');
 const root = createRoot(container);
@@ -24,6 +25,7 @@ root.render(
           <Route path="/upgrade-vip" element={<UpgradeVIP />} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
         </Routes>
       </Router>
     </AuthProvider>
