@@ -164,7 +164,7 @@ module.exports = async (req, res) => {
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>VIP 승인 확인</title>
+            <title>VIP 승인 완료</title>
             <style>
               body {
                 font-family: 'Arial', sans-serif;
@@ -196,7 +196,7 @@ module.exports = async (req, res) => {
               .button {
                 background-color: #4CAF50;
                 color: white;
-                padding: 10px 20px;
+                padding: 12px 24px;
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
@@ -205,109 +205,49 @@ module.exports = async (req, res) => {
                 display: inline-block;
                 margin: 10px;
               }
-              .final-button {
-                background-color: #2E7D32;
-                font-weight: bold;
-                padding: 12px 24px;
-              }
               .user-info {
                 background-color: #f9f9f9;
                 padding: 10px;
                 border-radius: 4px;
                 margin: 15px 0;
               }
-              .success-message {
-                display: none;
-                color: #4CAF50;
-                font-weight: bold;
-                margin: 15px 0;
+              .alert {
+                background-color: #fff9e6;
+                border-left: 4px solid #ffcc00;
+                padding: 15px;
+                margin: 20px 0;
+                text-align: left;
+                line-height: 1.5;
               }
-              .approval-container {
-                margin-top: 20px;
+              .code {
+                background-color: #f0f0f0;
+                padding: 5px;
+                border-radius: 3px;
+                font-family: monospace;
               }
             </style>
           </head>
           <body>
             <div class="success-container">
-              <h1>VIP 승인 확인</h1>
+              <h1>VIP 승인 완료!</h1>
               <div class="user-info">
                 <p><strong>사용자:</strong> ${userId || '알 수 없음'}</p>
                 <p><strong>결제 정보:</strong> ${email || '알 수 없음'}</p>
               </div>
               
-              <div id="approvalStep">
-                <p>VIP 회원 승인을 위해 <strong>최종 승인</strong> 버튼을 클릭해주세요.</p>
-                <p>승인 전에 입금 여부를 반드시 확인하세요!</p>
-                <div class="approval-container">
-                  <button id="finalApproveBtn" class="button final-button">최종 승인</button>
-                </div>
+              <p>관리자가 VIP 회원 승인을 완료했습니다.</p>
+              
+              <div class="alert">
+                <p><strong>중요 안내:</strong> 보안 정책으로 인해 현재 페이지에서 자동으로 VIP 상태를 적용할 수 없습니다.</p>
+                <p>다음 단계를 따라 VIP 상태를 적용해 주세요:</p>
+                <ol>
+                  <li>아래 버튼을 클릭하여 사이트 메인 페이지로 이동합니다</li>
+                  <li>로그아웃 후 다시 로그인 하시면 VIP 상태가 자동으로 적용됩니다</li>
+                </ol>
               </div>
               
-              <div id="successStep" style="display: none;">
-                <p class="success-message">성공적으로 VIP 회원 승인이 완료되었습니다.</p>
-                <p>사용자가 다시 로그인하면 VIP 상태가 적용됩니다.</p>
-                <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
-              </div>
+              <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
             </div>
-            
-            <script>
-              // VIP 사용자 정보를 로컬 스토리지에 직접 저장하는 스크립트
-              function applyVipStatus() {
-                try {
-                  // 사용자 ID가 제공된 경우에만 처리
-                  if ("${userId}") {
-                    // 로컬 스토리지에서 사용자 정보 가져오기
-                    const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                    
-                    // 대소문자 구분 없이 사용자 찾기
-                    const userIndex = users.findIndex(u => 
-                      u.username.toLowerCase() === "${userId}".toLowerCase()
-                    );
-                    
-                    if (userIndex !== -1) {
-                      // VIP 상태 업데이트
-                      const today = new Date();
-                      const expiryDate = new Date(today);
-                      expiryDate.setDate(today.getDate() + 30); // 30일 유효기간
-                      
-                      users[userIndex].membershipType = 'vip';
-                      users[userIndex].vipStatus = 'approved';
-                      users[userIndex].membershipExpiry = expiryDate.toISOString();
-                      users[userIndex].updatedAt = new Date().toISOString();
-                      
-                      // 로컬 스토리지 업데이트
-                      localStorage.setItem('smart_content_users', JSON.stringify(users));
-                      console.log('VIP 상태가 업데이트되었습니다:', users[userIndex]);
-                      
-                      // UI 업데이트
-                      document.getElementById('approvalStep').style.display = 'none';
-                      document.getElementById('successStep').style.display = 'block';
-                      
-                      return true;
-                    } else {
-                      console.error('해당 사용자를 찾을 수 없습니다:', "${userId}");
-                      alert('사용자 정보를 찾을 수 없습니다. 관리자에게 문의하세요.');
-                      return false;
-                    }
-                  }
-                  return false;
-                } catch (error) {
-                  console.error('VIP 상태 업데이트 중 오류:', error);
-                  alert('오류가 발생했습니다: ' + error.message);
-                  return false;
-                }
-              }
-              
-              // 최종 승인 버튼 클릭 이벤트 설정
-              document.getElementById('finalApproveBtn').addEventListener('click', function() {
-                const success = applyVipStatus();
-                if (success) {
-                  // 성공 메시지 표시
-                  document.getElementById('approvalStep').style.display = 'none';
-                  document.getElementById('successStep').style.display = 'block';
-                }
-              });
-            </script>
           </body>
         </html>
       `);
