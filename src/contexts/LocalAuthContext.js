@@ -12,6 +12,7 @@ export const useAuth = () => {
 // 로컬 스토리지 키 정의
 const USERS_KEY = 'smart_content_users';
 const CURRENT_USER_KEY = 'smart_content_current_user';
+const VIP_APPROVED_USERS_KEY = 'smart_content_vip_approved_users';
 
 // 로컬 스토리지 헬퍼 함수 추가
 const getUsers = () => {
@@ -67,6 +68,10 @@ export const AuthProvider = ({ children }) => {
           
           if (user) {
             console.log('자동 로그인 성공:', user.username);
+            
+            // VIP 승인 여부 확인
+            checkAndApplyVipStatus(user, users);
+            
             setCurrentUser(user);
           } else {
             console.log('자동 로그인 실패: 저장된 사용자를 찾을 수 없음', savedUsername);
@@ -84,6 +89,109 @@ export const AuthProvider = ({ children }) => {
     
     loadUserFromStorage();
   }, []);
+
+  // VIP 승인 여부 확인 및 적용
+  const checkAndApplyVipStatus = (user, allUsers) => {
+    try {
+      // VIP 승인 목록 확인
+      const approvedVipUsers = JSON.parse(localStorage.getItem(VIP_APPROVED_USERS_KEY) || '[]');
+      
+      // 현재 사용자가 VIP 승인 목록에 있는지 확인
+      const isApproved = approvedVipUsers.some(approvedUser => 
+        approvedUser.username.toLowerCase() === user.username.toLowerCase()
+      );
+      
+      console.log('VIP 승인 여부 확인:', user.username, isApproved);
+      
+      if (isApproved) {
+        // 이미 VIP 회원이면 무시
+        if (user.membershipType === 'vip') {
+          console.log('이미 VIP 회원입니다:', user.username);
+          return;
+        }
+        
+        console.log('VIP 승인 적용 중:', user.username);
+        
+        // 사용자의 인덱스 찾기
+        const userIndex = allUsers.findIndex(u => u.username === user.username);
+        if (userIndex === -1) {
+          console.error('사용자 인덱스를 찾을 수 없음');
+          return;
+        }
+        
+        // VIP 상태 업데이트
+        const today = new Date();
+        const expiryDate = new Date(today);
+        expiryDate.setDate(today.getDate() + 30); // 30일 유효기간
+        
+        allUsers[userIndex].membershipType = 'vip';
+        allUsers[userIndex].membershipExpiry = expiryDate.toISOString();
+        allUsers[userIndex].updatedAt = new Date().toISOString();
+        
+        // 로컬 스토리지 업데이트
+        saveUsers(allUsers);
+        
+        // 현재 사용자 업데이트
+        user.membershipType = 'vip';
+        user.membershipExpiry = expiryDate.toISOString();
+        user.updatedAt = new Date().toISOString();
+        
+        console.log('VIP 상태가 업데이트되었습니다:', user.username);
+        
+        // 승인 목록에서 제거
+        const updatedApprovedUsers = approvedVipUsers.filter(approvedUser => 
+          approvedUser.username.toLowerCase() !== user.username.toLowerCase()
+        );
+        localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(updatedApprovedUsers));
+      }
+    } catch (error) {
+      console.error('VIP 상태 확인 오류:', error);
+    }
+  };
+
+  // VIP 사용자로 승인 (관리자용 API)
+  const approveVipUser = (username) => {
+    try {
+      if (!username) return false;
+      
+      // 승인 목록 가져오기
+      const approvedVipUsers = JSON.parse(localStorage.getItem(VIP_APPROVED_USERS_KEY) || '[]');
+      
+      // 이미 승인된 사용자인지 확인
+      const alreadyApproved = approvedVipUsers.some(user => 
+        user.username.toLowerCase() === username.toLowerCase()
+      );
+      
+      if (alreadyApproved) {
+        console.log('이미 승인된 사용자입니다:', username);
+        return true;
+      }
+      
+      // 승인 목록에 추가
+      approvedVipUsers.push({
+        username,
+        approvedAt: new Date().toISOString()
+      });
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(approvedVipUsers));
+      console.log('VIP 사용자로 승인되었습니다:', username);
+      
+      // 현재 로그인한 사용자가 승인 대상이면 바로 적용
+      if (currentUser && currentUser.username.toLowerCase() === username.toLowerCase()) {
+        const users = getUsers();
+        checkAndApplyVipStatus(currentUser, users);
+        
+        // 상태 갱신
+        setCurrentUser({...currentUser});
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('VIP 승인 오류:', error);
+      return false;
+    }
+  };
 
   // 회원가입
   const register = async (username, password) => {
@@ -372,6 +480,7 @@ export const AuthProvider = ({ children }) => {
     checkAndUpdateUsage,
     incrementUsage,
     upgradeToVIP,
+    approveVipUser,
     loading,
     error
   };

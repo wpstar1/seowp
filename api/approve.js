@@ -238,16 +238,58 @@ module.exports = async (req, res) => {
               <p>관리자가 VIP 회원 승인을 완료했습니다.</p>
               
               <div class="alert">
-                <p><strong>중요 안내:</strong> 보안 정책으로 인해 현재 페이지에서 자동으로 VIP 상태를 적용할 수 없습니다.</p>
-                <p>다음 단계를 따라 VIP 상태를 적용해 주세요:</p>
-                <ol>
-                  <li>아래 버튼을 클릭하여 사이트 메인 페이지로 이동합니다</li>
-                  <li>로그아웃 후 다시 로그인 하시면 VIP 상태가 자동으로 적용됩니다</li>
-                </ol>
+                <p><strong>사용자 승인 처리가 완료되었습니다!</strong></p>
+                <p>사용자가 다음에 로그인할 때 자동으로 VIP로 승격됩니다.</p>
               </div>
               
               <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
             </div>
+
+            <script>
+              // VIP 승인 정보 저장
+              function storeVipApproval() {
+                try {
+                  // 사용자 ID가 제공된 경우에만 처리
+                  if ("${userId}") {
+                    // VIP 승인 목록 가져오기
+                    const VIP_APPROVED_USERS_KEY = 'smart_content_vip_approved_users';
+                    let approvedVipUsers = [];
+                    
+                    try {
+                      const existingData = localStorage.getItem(VIP_APPROVED_USERS_KEY);
+                      approvedVipUsers = existingData ? JSON.parse(existingData) : [];
+                    } catch (e) {
+                      console.error('기존 데이터 파싱 오류, 초기화합니다:', e);
+                      approvedVipUsers = [];
+                    }
+                    
+                    // 이미 승인된 사용자인지 확인
+                    const isAlreadyApproved = approvedVipUsers.some(user => 
+                      user.username.toLowerCase() === "${userId}".toLowerCase()
+                    );
+                    
+                    if (!isAlreadyApproved) {
+                      // 승인 목록에 추가
+                      approvedVipUsers.push({
+                        username: "${userId}",
+                        approvedAt: new Date().toISOString()
+                      });
+                      
+                      // 저장
+                      localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(approvedVipUsers));
+                      console.log('VIP 승인 정보가 저장되었습니다:', "${userId}");
+                    } else {
+                      console.log('이미 승인된 사용자입니다:', "${userId}");
+                    }
+                  }
+                } catch (error) {
+                  console.error('VIP 승인 정보 저장 중 오류:', error);
+                }
+              }
+              
+              // 페이지 로드 시 실행
+              window.addEventListener('DOMContentLoaded', storeVipApproval);
+            </script>
           </body>
         </html>
       `);
