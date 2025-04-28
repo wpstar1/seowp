@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './App.css';
 import Header from './components/Header';
+import { useAuth } from './contexts/LocalAuthContext'; // LocalAuthContext 추가
 
 function App() {
+  // 인증 관련 상태 변수
+  const { currentUser, login, register, logout, isAdmin } = useAuth();
+  
   // 상태 관리
   const [keyword, setKeyword] = useState('');
   const [link, setLink] = useState('');
@@ -75,7 +79,7 @@ function App() {
       
       // 사용자 데이터 로드 - 대소문자 구분 없이 사용자 찾기
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
+      const user = users.find(u => u.username && u.username.toLowerCase() === currentUser.toLowerCase());
       
       if (user) {
         console.log('초기 로딩: 사용자 데이터 확인', user);
@@ -114,7 +118,7 @@ function App() {
       try {
         // API 호출 전 로컬 스토리지 상태 확인
         const initialUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-        const initialUser = initialUsers.find(u => u.username === username);
+        const initialUser = initialUsers.find(u => u.username && u.username === username);
         console.log('API 호출 전 사용자 상태:', initialUser);
         
         const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
@@ -129,7 +133,7 @@ function App() {
         if (data.success && Array.isArray(data.approvedUsers)) {
           // 대소문자 구분 없이 비교
           const approvedUser = data.approvedUsers.find(u => 
-            u.userId.toLowerCase() === username.toLowerCase()
+            u.userId && u.userId.toLowerCase() === username.toLowerCase()
           );
           console.log('승인된 사용자 찾기 결과:', approvedUser);
           
@@ -139,7 +143,7 @@ function App() {
             // 현재 사용자가 VIP가 아니라면 업데이트
             const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
             // 대소문자 구분 없이 사용자 찾기
-            const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+            const userIndex = users.findIndex(u => u.username && u.username.toLowerCase() === username.toLowerCase());
             console.log('사용자 인덱스:', userIndex);
             
             if (userIndex !== -1) {
@@ -207,7 +211,7 @@ function App() {
     if (!currentUser) return;
     
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-    const user = users.find(u => u.username === currentUser);
+    const user = users.find(u => u.username && u.username === currentUser);
     
     if (user && user.previousKeywords && user.previousKeywords.length > 0) {
       // 최근 3개의 키워드를 가져옴
@@ -366,7 +370,7 @@ function App() {
   };
 
   // 콘텐츠 생성 함수
-  const generateContent = async () => {
+  const generateContent = useCallback(async () => {
     if (!isLoggedIn) {
       setShowLoginModal(true);
       return;
@@ -499,7 +503,23 @@ function App() {
       setIsLoading(false);
       alert("콘텐츠 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
-  };
+  }, [
+    isLoggedIn, 
+    keyword, 
+    saveKeywordToHistory, 
+    images, 
+    convertImageToBase64, 
+    setLoadingStep, 
+    setLoadingProgress, 
+    setLoadingMessage, 
+    setIsLoading, 
+    setResult, 
+    setHeadlines, 
+    setSeoAnalysis, 
+    fetchTrendingKeywords, 
+    analyzeCompetition, 
+    calculateReadabilityScore
+  ]);
 
   // 콘텐츠 생성 함수 (링크 포함)
   const generateContentWithRandomLinks = () => {
@@ -510,7 +530,7 @@ function App() {
     // 기본 콘텐츠 템플릿 생성
     let contentTemplate = generateBaseContent();
     
-    // 콘텐츠를 여러 섹션으로 분할 (마지막 '참고자료' 부분 분리)
+    // 콘텐츠를 여러 섹션으로 분할 (마지막 '결론' 부분 분리)
     const contentParts = contentTemplate.split('## 결론');
     const mainContent = contentParts[0];
     const conclusion = contentParts.length > 1 ? contentParts[1] : '';
@@ -901,9 +921,6 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
       
       const anchorText = formatOptions[Math.floor(Math.random() * formatOptions.length)];
       
-      // HTML 앵커 태그 생성 (새 창에서 열림)
-      const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${anchorText}</a>`;
-      
       // 콘텐츠에서 단어를 찾아 링크로 교체 (첫 번째 발견된 단어만)
       const regex = new RegExp(`\\b${safeWord}\\b`, 'i');
       if (regex.test(result)) {
@@ -1205,7 +1222,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     // 사용자 정보 확인 - 대소문자 구분 없이 사용자명 비교
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
     const user = users.find(u => 
-      u.username.toLowerCase() === username.toLowerCase() && 
+      u.username && u.username.toLowerCase() === username.toLowerCase() && 
       u.password === password
     );
     
@@ -1299,22 +1316,49 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
   };
 
   // VIP 회원 여부 확인 함수
-  const checkVipStatus = () => {
+  const checkVipStatus = useCallback(() => {
+    // 관리자 계정(1111) 확인
     const currentUser = localStorage.getItem('smart_content_current_user');
-    if (currentUser) {
-      const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      // 대소문자 구분 없이 사용자 찾기
-      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
-      
-      const isUserVip = user && user.membershipType === 'vip' && user.vipStatus === 'approved';
-      console.log('VIP 상태 체크 결과:', isUserVip, user);
-      
-      return isUserVip;
+    if (!currentUser) return false;
+    
+    if (currentUser === '1111') {
+      return true;  // 관리자는 자동으로 VIP 권한 부여
     }
-    return false;
-  };
+    
+    const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+    // 대소문자 구분 없이 사용자 찾기
+    const user = users.find(u => u.username && u.username.toLowerCase() === currentUser.toLowerCase());
+    
+    if (!user) return false;
+    
+    // VIP 회원 체크: membershipType이 vip이고 vipStatus가 approved인지 확인
+    const isUserVip = user.membershipType === 'vip' && user.vipStatus === 'approved';
+    
+    if (!isUserVip) {
+      // 마지막으로 vipApplication 상태도 확인
+      if (user.vipApplication && user.vipApplication.status === 'approved') {
+        // 상태 업데이트
+        user.membershipType = 'vip';
+        user.vipStatus = 'approved';
+        
+        // 만료일 설정 (30일)
+        const today = new Date();
+        const expiryDate = new Date(today);
+        expiryDate.setDate(today.getDate() + 30);
+        user.membershipExpiry = expiryDate.toISOString();
+        
+        // 사용자 저장
+        users[users.findIndex(u => u.username === currentUser)] = user;
+        localStorage.setItem('smart_content_users', JSON.stringify(users));
+        
+        return true;
+      }
+    }
+    
+    return isUserVip;
+  }, []);
 
-  // VIP 회원 신청 정보 저장 함수
+  // VIP 신청 정보 저장 함수
   const saveVipRequestInfo = (depositName) => {
     const currentUser = localStorage.getItem('smart_content_current_user');
     if (currentUser) {
@@ -1336,26 +1380,38 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     }
   };
 
-  // VIP 회원 신청 승인 함수
+  // VIP 신청 승인 함수
   const approveVipRequest = (username) => {
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
     const userIndex = users.findIndex(u => u.username === username);
     
     if (userIndex >= 0) {
+      // 만료일 설정 (30일)
+      const today = new Date();
+      const expiryDate = new Date(today);
+      expiryDate.setDate(today.getDate() + 30);
+      
+      console.log('텔레그램 승인: VIP 업그레이드 진행 중');
+      console.log('텔레그램 승인: 만료일 설정:', expiryDate.toLocaleDateString());
+      
       users[userIndex] = {
         ...users[userIndex],
+        membershipType: 'vip', // 중요: vip로 타입 지정
         vipStatus: 'approved',
+        membershipExpiry: expiryDate.toISOString(), // 만료일 설정
         vipRequest: {
           ...users[userIndex].vipRequest,
-          status: 'approved'
+          status: 'approved',
+          approvedAt: new Date().toISOString()
         }
       };
       
       localStorage.setItem('smart_content_users', JSON.stringify(users));
+      console.log('텔레그램 승인: 사용자 VIP 업그레이드 완료', username);
     }
   };
 
-  // VIP 회원 신청 거절 함수
+  // VIP 신청 거절 함수
   const rejectVipRequest = (username) => {
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
     const userIndex = users.findIndex(u => u.username === username);
@@ -1446,7 +1502,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
   };
   
   // 키워드를 과거 사용 키워드에 저장하는 함수
-  const saveKeywordToHistory = (newKeyword) => {
+  const saveKeywordToHistory = useCallback((newKeyword) => {
     const currentUser = localStorage.getItem('smart_content_current_user');
     if (!currentUser) return;
     
@@ -1478,7 +1534,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
       // 추천 키워드 업데이트
       setTimeout(() => generateRecentKeywordRecommendations(), 500);
     }
-  };
+  }, [setPreviousKeywords, generateRecentKeywordRecommendations]);
 
   // 키워드 입력시 유사 키워드 생성 
   useEffect(() => {
@@ -1519,6 +1575,19 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     
     setSimilarKeywords(newSimilarKeywords);
   };
+
+  // 헤더에서 VIP 신청 버튼 클릭 이벤트 감지
+  useEffect(() => {
+    const handleOpenVipModal = () => {
+      setShowVipModal(true);
+    };
+    
+    window.addEventListener('openVipModal', handleOpenVipModal);
+    
+    return () => {
+      window.removeEventListener('openVipModal', handleOpenVipModal);
+    };
+  }, [setShowVipModal]);
 
   return (
     <div className="app">
