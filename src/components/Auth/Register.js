@@ -32,10 +32,19 @@ const Register = () => {
     setLoading(true);
     
     try {
+      // 로그인 전에 기존 데이터 확인
+      const existingUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+      console.log('회원가입 전 기존 사용자:', existingUsers);
+      
       // 로컬 인증 시스템으로 회원가입
       const result = await register(username, password);
       
       if (result.success) {
+        // 회원가입 후 데이터 확인
+        const updatedUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+        console.log('회원가입 후 사용자 목록:', updatedUsers);
+        console.log('현재 로그인 사용자:', localStorage.getItem('smart_content_current_user'));
+        
         // 회원가입 성공, 대시보드로 바로 이동
         navigate('/dashboard');
       } else {

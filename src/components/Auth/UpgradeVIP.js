@@ -25,12 +25,24 @@ const UpgradeVIP = () => {
     setUpgrading(true);
     
     try {
+      // 현재 상태 로그
+      console.log('업그레이드 전 사용자 상태:', currentUser);
+      
       // 테스트를 위해 즉시 업그레이드
       const result = await upgradeToVIP();
       
+      console.log('업그레이드 결과:', result);
+      
       if (result.success) {
-        setMessage('VIP 회원으로 업그레이드되었습니다! 30일간 무제한 사용이 가능합니다.');
-        toast.success('VIP 회원으로 업그레이드되었습니다!');
+        // 성공 메시지 (result에 message가 있으면 그것을 사용)
+        const successMsg = result.message || 'VIP 회원으로 업그레이드되었습니다! 30일간 무제한 사용이 가능합니다.';
+        setMessage(successMsg);
+        toast.success(successMsg);
+        
+        // 강제로 페이지 리로드하여 상태 갱신
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         toast.error(result.error || '업그레이드 처리 중 오류가 발생했습니다');
       }
@@ -50,7 +62,15 @@ const UpgradeVIP = () => {
   const getMembershipStatus = () => {
     if (!currentUser) return '로딩 중...';
     
+    // 디버깅 정보
+    console.log('현재 회원 타입:', currentUser.membershipType);
+    console.log('만료일 정보:', currentUser.membershipExpiry);
+    
     if (currentUser.membershipType === 'vip') {
+      if (!currentUser.membershipExpiry) {
+        return 'VIP 회원 (무제한)';
+      }
+      
       const expiryDate = new Date(currentUser.membershipExpiry);
       return `VIP 회원 (만료일: ${expiryDate.toLocaleDateString()})`;
     }
