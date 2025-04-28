@@ -44,14 +44,12 @@ module.exports = async (req, res) => {
     const isConfirm = action === 'confirm';
     const isApprove = action === 'approve';
     const isReject = action === 'reject';
-    const shouldDirectApply = directApply === 'true';
     
     console.log(`VIP 요청 처리 중:`);
     console.log(`- 요청 ID: ${requestId}`);
     console.log(`- 액션: ${action}`);
     console.log(`- 사용자 ID: ${userId || '알 수 없음'}`);
     console.log(`- 이메일: ${email || '알 수 없음'}`);
-    console.log(`- 직접 적용: ${shouldDirectApply}`);
     
     // 1단계: 확인 화면 표시
     if (isConfirm) {
@@ -160,29 +158,6 @@ module.exports = async (req, res) => {
     
     // 2단계: 승인 처리
     if (isApprove) {
-      // 사용자를 직접 VIP로 설정하는 로직
-      let successHtml = '';
-      
-      if (userId) {
-        try {
-          // 클라이언트 측에서 로컬 스토리지를 업데이트하기 위한 스크립트 제공
-          successHtml = `
-            <div class="alert success">
-              <p><strong>✅ 사용자 [${userId}]의 VIP 승인이 완료되었습니다!</strong></p>
-              <p>다음 로그인 시 VIP 상태가 적용됩니다.</p>
-            </div>
-          `;
-        } catch (error) {
-          console.error('VIP 업그레이드 직접 적용 오류:', error);
-          successHtml = `
-            <div class="alert error">
-              <p><strong>⚠️ 오류 발생:</strong> ${error.message}</p>
-              <p>관리자 페이지에서 직접 VIP로 설정해주세요.</p>
-            </div>
-          `;
-        }
-      }
-      
       return res.status(200).send(`
         <!DOCTYPE html>
         <html>
@@ -269,14 +244,13 @@ module.exports = async (req, res) => {
               
               <p>관리자가 VIP 회원 승인을 완료했습니다.</p>
               
-              ${successHtml}
-              
               <div class="admin-actions">
                 <p><strong>아직 VIP 적용이 안 된 경우:</strong></p>
                 <p>관리자 계정(1111)으로 로그인하여 '관리자 페이지'에서 이 사용자를 VIP로 설정해주세요.</p>
               </div>
               
               <a href="https://seo-beige.vercel.app" class="button">메인 페이지로 이동</a>
+              <a href="https://seo-beige.vercel.app/admin-dashboard" class="button">관리자 페이지로 이동</a>
             </div>
             
             <script>
