@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './App.css';
+import { loginUser, registerUser, logoutUser, getCurrentUser } from './services/authService';
+import { checkVipStatus, saveUserData } from './services/dbService';
+import DatabaseInitializer from './components/DatabaseInitializer';
 
 function App() {
   // 상태 관리
@@ -1111,15 +1116,11 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
         .filter(Boolean)
         .join('\n\n\n'); // 문단 사이 공백 추가
 
-      // 이미지가 포함된 HTML을 클립보드에 복사
-      const htmlType = "text/html";
-      const textType = "text/plain";
-      
-      // 두 가지 형식 모두 클립보드에 저장
+      // 이미지를 Base64 인코딩으로 변환하여 복사해도 깨지지 않게 함
       const data = [
         new ClipboardItem({
-          [htmlType]: new Blob([styledContent], { type: htmlType }),
-          [textType]: new Blob([plainTextVersion], { type: textType })
+          "text/html": new Blob([styledContent], { type: "text/html" }),
+          "text/plain": new Blob([plainTextVersion], { type: "text/plain" })
         })
       ];
 
@@ -1593,6 +1594,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
 
   return (
     <div className="app">
+      <DatabaseInitializer />
       <header className="header">
         <div className="logo">
           <span className="logo-dot">🟣</span>
