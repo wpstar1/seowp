@@ -1,8 +1,6 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
-import { loginUser, registerUser, logoutUser, getCurrentUser } from './services/authService';
-import { checkVipStatus, saveUserData } from './services/dbService';
-import DatabaseInitializer from './components/DatabaseInitializer';
+import Header from './components/Header';
 
 function App() {
   // 상태 관리
@@ -18,24 +16,7 @@ function App() {
   const [headlines, setHeadlines] = useState([]);
   const [seoAnalysis, setSeoAnalysis] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');15 vulnerabilities (7 moderate, 8 high)
-  
-  To address issues that do not require attention, run:
-    npm audit fix
-  
-  To address all issues (including breaking changes), run:
-    npm audit fix --force
-  
-  Run `npm audit` for details.
-  Exit Code 0
-  
-  Not auto-run
-  Thought Process
-  
-  
-  이제 IndexedDB를 사용하여 이 문제를 해결해보겠습니다. IndexedDB는 브라우저에 내장된 강력한 데이터베이스로, 로컬 스토리지보다 훨씬 더 많은 데이터를 저장할 수 있고 복잡한 쿼리도 가능합니다.
-  
-  IndexedDB를 사용하는 db.js 파일을 새로 만들겠습니다:
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingTips, setLoadingTips] = useState([]);
@@ -48,13 +29,6 @@ function App() {
   const [trendingKeywords, setTrendingKeywords] = useState([]);
   const [showTrendingKeywords, setShowTrendingKeywords] = useState(false);
   const [competitorKeywords, setCompetitorKeywords] = useState([]);
-  const [showCompetitorAnalysis, setShowCompetitorAnalysis] = useState(false);
-  const [isMobileOptimized, setIsMobileOptimized] = useState(true); // 기본값은 모바일 최적화 활성화
-  const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
-  const [todaysKeyword, setTodaysKeyword] = useState("");  // 오늘의 키워드 상태 추가
-  const [previousKeywords, setPreviousKeywords] = useState([]); // 과거 사용 키워드 추가
-  const [recentKeywords, setRecentKeywords] = useState([]); // 최근 사용 키워드 기반 추천
-  const [similarKeywords, setSimilarKeywords] = useState([]); // 현재 입력 키워드 기반 추천
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -129,18 +103,6 @@ function App() {
     const checkApprovedUsers = async () => {
       if (!username) return;
       
-      // 먼저 isVip 상태를 false로 초기화 (관리자 제외)
-      if (username !== '1111') {
-        setIsVip(false);
-      }
-      
-      // 관리자 계정(1111)은 항상 VIP 상태를 가지므로 API 호출 불필요
-      if (username === '1111') {
-        setIsVip(true);
-        console.log('관리자 계정(1111)은 자동으로 VIP 권한이 부여됩니다.');
-        return;
-      }
-      
       console.log('VIP 상태 확인 중...', username);
       try {
         // API 호출 전 로컬 스토리지 상태 확인
@@ -148,113 +110,73 @@ function App() {
         const initialUser = initialUsers.find(u => u.username === username);
         console.log('API 호출 전 사용자 상태:', initialUser);
         
-        // VIP 상태 재확인 (두 조건 모두 충족해야 함)
-        if (initialUser && initialUser.membershipType === 'vip' && initialUser.vipStatus === 'approved') {
-          console.log('사용자는 VIP 회원입니다. API 호출 건너뜁니다.');
-          setIsVip(true);
+        const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
+        if (!response.ok) {
+          console.error('API 응답 오류:', response.status);
           return;
-        } else {
-          console.log('사용자는 VIP 회원이 아닙니다.');
-          setIsVip(false);
         }
         
-        // API 호출 시도
-        try {
-          // 우선 로컬에서 처리
-          const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-          const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+        const data = await response.json();
+        console.log('API 응답 데이터:', data);
+        
+        if (data.success && Array.isArray(data.approvedUsers)) {
+          // 대소문자 구분 없이 비교
+          const approvedUser = data.approvedUsers.find(u => 
+            u.userId.toLowerCase() === username.toLowerCase()
+          );
+          console.log('승인된 사용자 찾기 결과:', approvedUser);
           
-          if (userIndex >= 0) {
-            const user = users[userIndex];
-            if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-              setIsVip(true);
-            } else {
-              setIsVip(false);
-            }
-          }
-          
-          // 이전 API 호출 및 응답 처리 로직은 주석 처리
-          /*
-          const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
-          if (!response.ok) {
-            console.error('API 응답 오류:', response.status);
-            return;
-          }
-          
-          const responseText = await response.text();
-          let data;
-          
-          try {
-            data = JSON.parse(responseText);
-          } catch (parseError) {
-            console.error('API 응답이 유효한 JSON이 아닙니다:', parseError);
-            console.log('응답 내용 일부:', responseText.substring(0, 100));
-            return;
-          }
-          
-          console.log('API 응답 데이터:', data);
-          
-          if (data.success && Array.isArray(data.approvedUsers)) {
-            // 대소문자 구분 없이 비교
-            const approvedUser = data.approvedUsers.find(u => 
-              u.userId.toLowerCase() === username.toLowerCase()
-            );
-            console.log('승인된 사용자 찾기 결과:', approvedUser);
+          if (approvedUser && approvedUser.approvalStatus === 'approved') {
+            console.log('VIP 승인 상태 확인됨:', approvedUser);
             
-            if (approvedUser && approvedUser.approvalStatus === 'approved') {
-              console.log('VIP 승인 상태 확인됨:', approvedUser);
+            // 현재 사용자가 VIP가 아니라면 업데이트
+            const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+            // 대소문자 구분 없이 사용자 찾기
+            const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+            console.log('사용자 인덱스:', userIndex);
+            
+            if (userIndex !== -1) {
+              // 사용자 VIP 상태 업데이트
+              const today = new Date();
+              const expiryDate = new Date(today);
+              expiryDate.setDate(today.getDate() + 30); // 30일 후
               
-              // 현재 사용자가 VIP가 아니라면 업데이트
-              const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-              // 대소문자 구분 없이 사용자 찾기
-              const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
-              console.log('사용자 인덱스:', userIndex);
+              // 기존 사용자 데이터 백업
+              const beforeUpdate = {...users[userIndex]};
+              console.log('업데이트 전 사용자 데이터:', beforeUpdate);
               
-              if (userIndex !== -1) {
-                // 사용자 VIP 상태 업데이트
-                const today = new Date();
-                const expiryDate = new Date(today);
-                expiryDate.setDate(today.getDate() + 30); // 30일 후
+              users[userIndex].membershipType = 'vip';
+              users[userIndex].vipStatus = 'approved';
+              users[userIndex].membershipExpiry = expiryDate.toISOString();
+              users[userIndex].updatedAt = new Date().toISOString();
+              
+              console.log('업데이트 후 사용자 데이터:', users[userIndex]);
+              
+              // 로컬 스토리지 업데이트
+              localStorage.setItem('smart_content_users', JSON.stringify(users));
+              console.log('로컬 스토리지 업데이트 완료');
+              
+              // 현재 사용자 정보 업데이트
+              const updatedUser = {...users[userIndex]};
+              
+              setIsLoggedIn(true);
+              setUsername(updatedUser.username);
+              setIsVip(true);  // VIP 상태 업데이트
+              console.log('React 상태 업데이트 완료: isVip =', true);
+              
+              // 상태 변경 후 강제로 UI 업데이트를 위한 추가 처리
+              setTimeout(() => {
+                // 상태가 제대로 반영되었는지 다시 확인
+                console.log('타임아웃 후 VIP 상태 다시 확인:', isVip);
                 
-                // 기존 사용자 데이터 백업
-                const beforeUpdate = {...users[userIndex]};
-                console.log('업데이트 전 사용자 데이터:', beforeUpdate);
-                
-                users[userIndex].membershipType = 'vip';
-                users[userIndex].vipStatus = 'approved';
-                users[userIndex].membershipExpiry = expiryDate.toISOString();
-                users[userIndex].updatedAt = new Date().toISOString();
-                
-                console.log('업데이트 후 사용자 데이터:', users[userIndex]);
-                
-                // 로컬 스토리지 업데이트
-                localStorage.setItem('smart_content_users', JSON.stringify(users));
-                console.log('로컬 스토리지 업데이트 완료');
-                
-                // 현재 사용자 정보 업데이트
-                const updatedUser = {...users[userIndex]};
-                
-                setIsLoggedIn(true);
-                setUsername(updatedUser.username);
-                setIsVip(true);  // VIP 상태 업데이트
-                console.log('React 상태 업데이트 완료: isVip =', true);
-                
-                // 상태 변경 후 강제로 UI 업데이트를 위한 추가 처리
-                setTimeout(() => {
-                  // 상태가 제대로 반영되었는지 다시 확인
-                  console.log('타임아웃 후 VIP 상태 다시 확인:', isVip);
-                  
-                  // 상태가 false로 남아있다면 강제로 다시 설정
-                  if (!isVip) {
-                    console.log('강제 VIP 상태 업데이트 적용');
-                    setIsVip(true);
-                  }
-                }, 500);
-              }
+                // 상태가 false로 남아있다면 강제로 다시 설정
+                if (!isVip) {
+                  console.log('강제 VIP 상태 업데이트 적용');
+                  setIsVip(true);
+                }
+              }, 500);
             }
           }
-        } catch (apiError) {
-          console.error('API 통신 중 오류 발생:', apiError);
         }
       } catch (error) {
         console.error('승인 상태 확인 중 오류:', error);
@@ -270,7 +192,7 @@ function App() {
     return () => {
       clearInterval(intervalId); // 컴포넌트 언마운트 시 인터벌 제거
     };
-  }, [username, isVip]);
+  }, [username]);
 
   // 과거 사용 키워드 기반 추천 키워드 생성
   const generateRecentKeywordRecommendations = () => {
@@ -689,13 +611,13 @@ function App() {
       // 이미지 캡션 생성
       const getImageCaption = (index) => {
         const captions = [
-          `${keyword}에 관한 이미지입니다.`,
-          `${keyword}을(를) 시각적으로 보여주는 참고자료입니다.`,
-          `${keyword}의 실제 적용 사례를 보여주는 이미지입니다.`,
-          `${keyword}에 대한 이해를 돕는 시각자료입니다.`,
-          `${keyword}와 관련된 중요한 시각적 정보입니다.`
+          `그림 ${index + 1}: ${keyword} 관련 이미지`,
+          `${keyword}의 실제 적용 사례`,
+          `${keyword} 시각화 자료`,
+          `${keyword} 관련 참고 이미지 ${index + 1}`,
+          `${keyword}에 대한 이해를 돕는 이미지`
         ];
-        return captions[index % captions.length];
+        return captions[Math.floor(Math.random() * captions.length)];
       };
       
       // 이미지 삽입
@@ -822,18 +744,6 @@ ${keyword}의 가장 좋은 점은 뭐니뭐니해도 이런 것들이에요:
 - 지속가능한 모델 구축하기
 
 제가 취미로 하는 그림 그리기에 ${keyword} 개념을 접목해봤는데, 생각보다 재밌는 결과가 나왔어요. 생각지도 못한 분야에서 빛을 발하더라고요! ${getRandomEmoji()}
-
-## ${addEmojiWithProbability(keyword + '의 장점')} 
-
-${keyword}의 가장 좋은 점은 뭐니뭐니해도 이런 것들이에요:
-
-1. **시간 절약**: 기존보다 30-50% 정도 시간을 아낄 수 있어요. 저도 처음엔 반신반의했는데, 직접 해보니 확실히 달라요!
-
-2. **다양한 상황에 적용 가능**: 작은 취미부터 대기업 시스템까지... 정말 어디든 활용할 수 있어요. ${getRandomEmoji()} 저는 주로 개인 프로젝트에 쓰고 있는데 정말 편해요.
-
-3. **진입장벽이 낮아요**: 전문지식 없이도 시작할 수 있어요. 요즘은 좋은 입문서도 많고, 유튜브에도 친절한 강의가 많아서 배우기 쉬워요.
-
-4. **비용 효율적**: 초기 투자 비용이 있긴 하지만, 장기적으로 보면 정말 이득이에요. 제 경우엔 6개월 만에 원금 회수했어요. ${getRandomEmoji()}
 
 ## ${addEmojiWithProbability('실제 성공 사례들')}
 
@@ -1146,11 +1056,18 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
         .filter(Boolean)
         .join('\n\n\n'); // 문단 사이 공백 추가
 
-      // 이미지를 Base64 인코딩으로 변환하여 복사해도 깨지지 않게 함
+      // 이미지가 포함된 HTML을 클립보드에 복사
+      const htmlType = "text/html";
+      const textType = "text/plain";
+      
+      // 두 가지 형식 모두 클립보드에 저장
+      const htmlBlob = new Blob([styledContent], { type: htmlType });
+      const textBlob = new Blob([plainTextVersion], { type: textType });
+      
       const data = [
         new ClipboardItem({
-          "text/html": new Blob([styledContent], { type: "text/html" }),
-          "text/plain": new Blob([plainTextVersion], { type: "text/plain" })
+          [htmlType]: htmlBlob,
+          [textType]: textBlob
         })
       ];
 
@@ -1295,39 +1212,13 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     setIsLoggedIn(true);
     setShowLoginModal(false);
     
-    // 관리자 계정(1111) 자동 VIP 상태 부여
-    if (user.username === '1111') {
-      console.log('로그인: 관리자 계정은 자동으로 VIP 회원 권한을 받습니다.');
-      
-      // 관리자에게 VIP 상태 자동 부여
-      const userIndex = users.findIndex(u => u.username === '1111');
-      if (userIndex !== -1) {
-        // 기존 VIP 상태가 아닌 경우에만 업데이트
-        if (users[userIndex].membershipType !== 'vip' || users[userIndex].vipStatus !== 'approved') {
-          // VIP 정보 설정
-          const today = new Date();
-          const expiryDate = new Date(today);
-          expiryDate.setDate(today.getDate() + 365); // 1년 만료
-          
-          users[userIndex].membershipType = 'vip';
-          users[userIndex].vipStatus = 'approved';
-          users[userIndex].membershipExpiry = expiryDate.toISOString();
-          users[userIndex].updatedAt = new Date().toISOString();
-          
-          console.log('관리자 계정 VIP 상태 업데이트 완료');
-        }
-      }
-      
+    // VIP 상태 확인 및 설정
+    if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+      console.log('로그인: 사용자는 VIP 회원입니다.');
       setIsVip(true);
     } else {
-      // 일반 사용자는 기존 로직대로 VIP 상태 확인
-      if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-        console.log('로그인: 사용자는 VIP 회원입니다.');
-        setIsVip(true);
-      } else {
-        console.log('로그인: 사용자는 일반 회원입니다.');
-        setIsVip(false);
-      }
+      console.log('로그인: 사용자는 일반 회원입니다.');
+      setIsVip(false);
     }
     
     setAuthError("");
@@ -1624,83 +1515,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
 
   return (
     <div className="app">
-      <DatabaseInitializer />
-      <header className="header">
-        <div className="logo">
-          <span className="logo-dot">🟣</span>
-          <span>워프스타 Content Creator v5</span>
-        </div>
-        <div className="header-info">
-          <span>모바일 AI 콘텐츠 생성기</span>
-        </div>
-        {isLoggedIn ? (
-          <div className="header-actions">
-            {username === '1111' && (  // 관리자(1111) 계정일 경우만 관리자 버튼 표시
-              <button 
-                className="admin-button"
-                onClick={() => {
-                  // 관리자 페이지를 새 창에서 열기
-                  window.open('/admin.html', '_blank');
-                }}
-                style={{ 
-                  backgroundColor: '#E84855', 
-                  marginRight: '10px',
-                  fontWeight: 'bold'
-                }}
-              >
-                관리자
-              </button>
-            )}
-            {!isVip && (  // VIP가 아닌 경우만 VIP 신청 버튼 표시
-              <button 
-                className="vip-button"
-                onClick={() => setShowVipModal(true)}
-              >
-                VIP 신청
-              </button>
-            )}
-            {isVip && (  // VIP인 경우 VIP 표시 배지
-              <div 
-                className="vip-badge"
-                style={{
-                  backgroundColor: '#8A4FFF',
-                  color: 'white',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  display: 'inline-block',
-                  marginRight: '10px'
-                }}
-              >
-                VIP 회원
-              </div>
-            )}
-            <button 
-              className="login-button"
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
-          </div>
-        ) : (
-          <div className="header-actions">
-            <button 
-              className="login-button"
-              onClick={() => setShowLoginModal(true)}
-            >
-              로그인
-            </button>
-            <button 
-              className="register-button"
-              onClick={() => setShowRegisterModal(true)}
-            >
-              회원가입
-            </button>
-          </div>
-        )}
-      </header>
-
+      <Header />
       <main className="content">
         {/* VIP 회원 환영 배너 */}
         {isLoggedIn && isVip && (
@@ -2848,7 +2663,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                       }
                       
                       // 확인 팝업 표시
-                      if (window.confirm(`예금주와 금액이 정확한지 확인해주세요.\n\n예금주: ${depositName}\n금액: 19,900원\n\nVIP 신청을 진행하시겠습니까?`)) {
+                      if (window.confirm(`예금주와 금액이 정확한지 확인해주세요.\n\n예금주: ${depositName}\n금액: 29,000원\n\nVIP 신청을 진행하시겠습니까?`)) {
                         // 버튼 애니메이션 효과
                         const button = event.target;
                         button.classList.add('button-pressed');
@@ -2860,12 +2675,8 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                           // 텔레그램 메시지 전송
                           const approvalId = Date.now().toString(); // 고유 승인 ID 생성
                           
-                          // 애플리케이션의 기본 URL을 사용하고 로컬 승인 페이지 경로 사용
-                          const baseUrl = window.location.origin;
-                          const approveUrl = `${baseUrl}/api/approve.html?requestId=${approvalId}&action=approve&userId=${encodeURIComponent(currentUser)}&email=${encodeURIComponent(depositName)}`;
-                          
                           // 메시지에 승인 링크 포함
-                          const message = `💰 VIP 신청 요청\n\n사용자: ${currentUser}\n예금주: ${depositName}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\n${approveUrl}`;
+                          const message = `💰 VIP 신청 요청\n\n사용자: ${currentUser}\n예금주: ${depositName}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\nhttps://seo-beige.vercel.app/api/approve?requestId=${approvalId}&action=approve&userId=${encodeURIComponent(currentUser)}&email=${encodeURIComponent(depositName)}`;
                           
                           const TELEGRAM_BOT_TOKEN = "7937435896:AAEOi8fVqPyBiWf0BhJJvUv5F8V6DtQ67TM";
                           const TELEGRAM_CHAT_ID = "455532741";

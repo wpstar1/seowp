@@ -1,85 +1,93 @@
-import pool, { executeQuery, usersDB } from '../lib/db';
+import { executeQuery, initDatabase } from '../lib/db';
 
 // 데이터베이스 테이블 초기화
 export async function initializeDatabase() {
   try {
-    // 사용자 테이블 생성
-    await executeQuery(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        membership_type VARCHAR(50) DEFAULT 'basic',
-        vip_status VARCHAR(50) DEFAULT 'none',
-        membership_expiry TIMESTAMP WITH TIME ZONE,
-        is_admin BOOLEAN DEFAULT FALSE,
-        saved_links JSONB DEFAULT '[]',
-        previous_keywords JSONB DEFAULT '[]'
-      )
-    `);
-    
-    console.log('데이터베이스 테이블 초기화 완료');
+    await initDatabase();
+    console.log('PostgreSQL 데이터베이스 초기화 완료');
     return { success: true };
   } catch (error) {
-    console.error('데이터베이스 초기화 오류:', error);
+    console.error('PostgreSQL 데이터베이스 초기화 오류:', error);
     return { success: false, error: error.message };
   }
 }
 
-// 로컬 스토리지 데이터 마이그레이션
-export async function migrateLocalStorageData() {
+// 모든 사용자 가져오기
+export async function getAllUsers() {
   try {
-    if (typeof window === 'undefined') return { success: false, error: '클라이언트 환경에서만 사용 가능합니다.' };
+    const result = await executeQuery('SELECT * FROM users ORDER BY id DESC');
+    return { success: true, data: result.rows };
+  } catch (error) {
+    console.error('사용자 목록 가져오기 오류:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 사용자명으로 사용자 가져오기
+export async function getUserByUsername(username) {
+  try {
+    const result = await executeQuery('SELECT * FROM users WHERE username = $1', [username]);
+    return { success: true, data: result.rows[0] };
+  } catch (error) {
+    console.error('사용자 가져오기 오류:', error);
     
-    // 로컬 스토리지에서 사용자 데이터 가져오기
-    const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-    const results = [];
-    
-    for (const user of users) {
-      try {
-        // 사용자 데이터 삽입 또는 업데이트
-        const result = await executeQuery(`
-          INSERT INTO users 
-            (username, password, membership_type, vip_status, membership_expiry, is_admin, saved_links, previous_keywords) 
-          VALUES 
-            ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (username) 
-          DO UPDATE SET 
-            password = EXCLUDED.password,
-            membership_type = EXCLUDED.membership_type,
-            vip_status = EXCLUDED.vip_status,
-            membership_expiry = EXCLUDED.membership_expiry,
-            is_admin = EXCLUDED.is_admin,
-            saved_links = EXCLUDED.saved_links,
-            previous_keywords = EXCLUDED.previous_keywords,
-            updated_at = CURRENT_TIMESTAMP
-          RETURNING *
-        `, [
-          user.username,
-          user.password,
-          user.membershipType || 'basic',
-          user.vipStatus || 'none',
-          user.membershipExpiry || null,
-          user.username === '1111', // 관리자 계정
-          JSON.stringify(user.savedLinks || []),
-          JSON.stringify(user.previousKeywords || [])
-        ]);
-        
-        if (result.success) {
-          results.push({ username: user.username, success: true });
-        } else {
-          results.push({ username: user.username, success: false, error: result.error });
+    // 로컬 스토리지 폴백
+    try {
+      const usersString = localStorage.getItem('smart_content_users');
+      if (usersString) {
+        const users = JSON.parse(usersString);
+        const user = users.find(u => u.username === username);
+        if (user) {
+          return { 
+            success: true, 
+            data: {
+              id: Date.now(),
+              username: user.username,
+              password: user.password,
+              membershiptype: user.membershipType || 'free',
+              vipstatus: user.vipStatus || 'none',
+              isadmin: user.username === '1111'
+            },
+            isLocalStorage: true
+          };
         }
-      } catch (error) {
-        results.push({ username: user.username, success: false, error: error.message });
       }
+    } catch (localError) {
+      console.error('로컬 스토리지 폴백 오류:', localError);
     }
     
-    return { success: true, results };
+    return { success: false, error: error.message };
+  }
+}
+
+// 새 사용자 생성
+export async function createUser(userData) {
+  try {
+    const { username, password, email = '' } = userData;
+    
+    const result = await executeQuery(
+      'INSERT INTO users (username, password, email, membershipType, vipStatus) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [username, password, email, 'free', 'none']
+    );
+    
+    return { success: true, data: result.rows[0] };
   } catch (error) {
-    console.error('마이그레이션 오류:', error);
+    console.error('사용자 생성 오류:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// VIP 상태 업데이트
+export async function updateVipStatus(username, membershipType, vipStatus, expiryDate) {
+  try {
+    const result = await executeQuery(
+      'UPDATE users SET membershipType = $1, vipStatus = $2, vipExpireDate = $3 WHERE username = $4 RETURNING *',
+      [membershipType, vipStatus, expiryDate, username]
+    );
+    
+    return { success: true, data: result.rows[0] };
+  } catch (error) {
+    console.error('VIP 상태 업데이트 오류:', error);
     return { success: false, error: error.message };
   }
 }
@@ -101,7 +109,7 @@ export async function authenticateUser(username, password) {
     }
     
     // 로그인 시간 업데이트
-    await executeQuery('UPDATE users SET updated_at = NOW() WHERE id = $1', [user.id]);
+    await executeQuery('UPDATE users SET updated_at = NOW() WHERE username = $1', [username]);
     
     // 비밀번호 정보는 제외하고 리턴
     delete user.password;
@@ -122,11 +130,28 @@ export async function checkVipStatus(username) {
     }
     
     const result = await executeQuery(
-      'SELECT membership_type, vip_status, membership_expiry FROM users WHERE username = $1', 
+      'SELECT * FROM users WHERE username = $1', 
       [username]
     );
     
     if (!result.success || result.data.length === 0) {
+      // IndexedDB에서 사용자를 찾지 못한 경우 로컬 스토리지에서 다시 확인
+      try {
+        const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+        const localUser = localUsers.find(u => u.username === username);
+        
+        if (localUser) {
+          const isVip = 
+            localUser.membershipType === 'vip' && 
+            localUser.vipStatus === 'approved' && 
+            (localUser.membershipExpiry ? new Date(localUser.membershipExpiry) > new Date() : false);
+          
+          return { success: true, isVip };
+        }
+      } catch (localError) {
+        console.error('로컬 스토리지 VIP 상태 확인 오류:', localError);
+      }
+      
       return { success: false, error: '사용자를 찾을 수 없습니다.' };
     }
     
@@ -134,13 +159,31 @@ export async function checkVipStatus(username) {
     
     // VIP 상태 확인
     const isVip = 
-      user.membership_type === 'vip' && 
-      user.vip_status === 'approved' && 
-      (user.membership_expiry ? new Date(user.membership_expiry) > new Date() : false);
+      user.membershipType === 'vip' && 
+      user.vipStatus === 'approved' && 
+      (user.membershipExpiry ? new Date(user.membershipExpiry) > new Date() : false);
     
     return { success: true, isVip };
   } catch (error) {
     console.error('VIP 상태 확인 오류:', error);
+    
+    // 오류 발생 시 로컬 스토리지 폴백
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+      const localUser = localUsers.find(u => u.username === username);
+      
+      if (localUser) {
+        const isVip = 
+          localUser.membershipType === 'vip' && 
+          localUser.vipStatus === 'approved' && 
+          (localUser.membershipExpiry ? new Date(localUser.membershipExpiry) > new Date() : false);
+        
+        return { success: true, isVip };
+      }
+    } catch (localError) {
+      console.error('로컬 스토리지 VIP 상태 확인 오류:', localError);
+    }
+    
     return { success: false, error: error.message };
   }
 }
@@ -151,20 +194,54 @@ export async function saveUserData(username, data) {
     const { links, previousKeywords } = data;
     
     // 사용자 확인
-    const userResult = await executeQuery('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await executeQuery('SELECT * FROM users WHERE username = $1', [username]);
     
     if (!userResult.success || userResult.data.length === 0) {
       return { success: false, error: '사용자를 찾을 수 없습니다.' };
     }
     
+    const user = userResult.data[0];
+    
     // 사용자 데이터 업데이트
     const updateResult = await executeQuery(
-      'UPDATE users SET saved_links = $1, previous_keywords = $2, updated_at = NOW() WHERE username = $3 RETURNING *',
-      [JSON.stringify(links || []), JSON.stringify(previousKeywords || []), username]
+      'UPDATE users SET password = $1, saved_links = $2, previous_keywords = $3, updated_at = NOW() WHERE username = $4 RETURNING *',
+      [user.password, JSON.stringify(links || []), JSON.stringify(previousKeywords || []), username]
     );
     
     if (!updateResult.success) {
       return { success: false, error: updateResult.error };
+    }
+    
+    // 로컬 스토리지도 업데이트 (백업 및 동기화)
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+      const userIndex = localUsers.findIndex(u => u.username === username);
+      
+      if (userIndex !== -1) {
+        localUsers[userIndex] = {
+          ...localUsers[userIndex],
+          savedLinks: links || [],
+          previousKeywords: previousKeywords || [],
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        localUsers.push({
+          username,
+          password: user.password,
+          membershipType: user.membershipType,
+          vipStatus: user.vipStatus,
+          membershipExpiry: user.membershipExpiry,
+          createdAt: user.createdAt,
+          updatedAt: new Date().toISOString(),
+          savedLinks: links || [],
+          previousKeywords: previousKeywords || [],
+          isAdmin: username === '1111'
+        });
+      }
+      
+      localStorage.setItem('smart_content_users', JSON.stringify(localUsers));
+    } catch (localError) {
+      console.error('로컬 스토리지 업데이트 오류:', localError);
     }
     
     return { success: true, user: updateResult.data[0] };
