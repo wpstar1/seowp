@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './App.css';
 import { loginUser, registerUser, logoutUser, getCurrentUser } from './services/authService';
@@ -145,6 +143,21 @@ function App() {
         
         // API 호출 시도
         try {
+          // 우선 로컬에서 처리
+          const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+          const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+          
+          if (userIndex >= 0) {
+            const user = users[userIndex];
+            if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+              setIsVip(true);
+            } else {
+              setIsVip(false);
+            }
+          }
+          
+          // 이전 API 호출 및 응답 처리 로직은 주석 처리
+          /*
           const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
           if (!response.ok) {
             console.error('API 응답 오류:', response.status);

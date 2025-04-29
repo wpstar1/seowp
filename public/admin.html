@@ -191,43 +191,135 @@
             }, 4000);
         }
 
-        // VIP 상태 변경 함수
-        function changeVipStatus(username, makeVip) {
+        // API로 사용자 데이터 가져오기
+        async function fetchUsers() {
             try {
-                // 로컬 스토리지에서 사용자 정보 가져오기
+                // API 엔드포인트가 없으므로 로컬 스토리지와 데이터베이스 데이터를 통합하여 표시
+                // 1. 로컬 스토리지에서 데이터 가져오기
+                const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                console.log('로컬 스토리지 사용자:', localUsers);
+                
+                // 2. 데이터베이스에서 가져온 데이터를 시뮬레이션 (DatabaseInitializer에서 마이그레이션 했다면 존재해야 함)
+                let dbUsers = [];
+                try {
+                    // 브라우저 저장소에 임시로 저장된 DB 데이터 가져오기 (dbService.js에서 저장한 데이터)
+                    const dbUsersJson = localStorage.getItem('db_users_cache');
+                    if (dbUsersJson) {
+                        dbUsers = JSON.parse(dbUsersJson);
+                        console.log('데이터베이스 사용자 (캐시):', dbUsers);
+                    }
+                } catch (e) {
+                    console.error('데이터베이스 사용자 조회 오류:', e);
+                }
+                
+                // 두 데이터 소스 통합 (중복 사용자는 데이터베이스 버전 우선)
+                const combinedUsers = [...localUsers];
+                
+                // DB 사용자가 있으면 병합 (username으로 구분)
+                dbUsers.forEach(dbUser => {
+                    const existingIndex = combinedUsers.findIndex(u => 
+                        u.username && dbUser.username && 
+                        u.username.toLowerCase() === dbUser.username.toLowerCase()
+                    );
+                    
+                    if (existingIndex >= 0) {
+                        // 기존 사용자 업데이트
+                        combinedUsers[existingIndex] = {
+                            ...combinedUsers[existingIndex],
+                            ...dbUser,
+                            // DB 형식의 필드명을 클라이언트 형식으로 변환
+                            membershipType: dbUser.membership_type || combinedUsers[existingIndex].membershipType,
+                            vipStatus: dbUser.vip_status || combinedUsers[existingIndex].vipStatus,
+                            membershipExpiry: dbUser.membership_expiry || combinedUsers[existingIndex].membershipExpiry,
+                            createdAt: dbUser.created_at || combinedUsers[existingIndex].createdAt,
+                            updatedAt: dbUser.updated_at || combinedUsers[existingIndex].updatedAt
+                        };
+                    } else {
+                        // 새 사용자 추가 (DB 형식의 필드명을 클라이언트 형식으로 변환)
+                        combinedUsers.push({
+                            username: dbUser.username,
+                            // 보안상 비밀번호는 포함하지 않음
+                            membershipType: dbUser.membership_type || 'basic',
+                            vipStatus: dbUser.vip_status || 'none',
+                            membershipExpiry: dbUser.membership_expiry || null,
+                            createdAt: dbUser.created_at || new Date().toISOString(),
+                            updatedAt: dbUser.updated_at || new Date().toISOString()
+                        });
+                    }
+                });
+                
+                return combinedUsers;
+            } catch (error) {
+                console.error('사용자 데이터 가져오기 오류:', error);
+                showMessage('사용자 데이터를 가져오는 중 오류가 발생했습니다.', 'error');
+                return [];
+            }
+        }
+
+        // VIP 상태 변경 함수
+        async function changeVipStatus(username, makeVip) {
+            try {
+                // 1. 로컬 스토리지 업데이트
                 const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
                 const userIndex = users.findIndex(user => user.username === username);
                 
-                if (userIndex === -1) {
-                    showMessage(`사용자 '${username}'를 찾을 수 없습니다.`, 'error');
-                    return;
+                if (userIndex !== -1) {
+                    // VIP 상태 변경
+                    if (makeVip) {
+                        // VIP로 업그레이드
+                        const today = new Date();
+                        const expiryDate = new Date(today);
+                        expiryDate.setDate(today.getDate() + 30); // 30일 후
+                        
+                        users[userIndex].membershipType = 'vip';
+                        users[userIndex].vipStatus = 'approved';
+                        users[userIndex].membershipExpiry = expiryDate.toISOString();
+                        users[userIndex].updatedAt = new Date().toISOString();
+                    } else {
+                        // VIP 제거
+                        users[userIndex].membershipType = 'basic';
+                        users[userIndex].vipStatus = 'none';
+                        users[userIndex].membershipExpiry = null;
+                        users[userIndex].updatedAt = new Date().toISOString();
+                    }
+                    
+                    // 로컬 스토리지 업데이트
+                    localStorage.setItem('smart_content_users', JSON.stringify(users));
                 }
                 
-                // VIP 상태 변경
-                if (makeVip) {
-                    // VIP로 업그레이드
-                    const today = new Date();
-                    const expiryDate = new Date(today);
-                    expiryDate.setDate(today.getDate() + 30); // 30일 후
-                    
-                    users[userIndex].membershipType = 'vip';
-                    users[userIndex].vipStatus = 'approved';
-                    users[userIndex].membershipExpiry = expiryDate.toISOString();
-                    users[userIndex].updatedAt = new Date().toISOString();
-                    
-                    showMessage(`사용자 '${username}'가 VIP로 업그레이드되었습니다.`, 'success');
-                } else {
-                    // VIP 제거
-                    users[userIndex].membershipType = 'basic';
-                    users[userIndex].vipStatus = 'none';
-                    users[userIndex].membershipExpiry = null;
-                    users[userIndex].updatedAt = new Date().toISOString();
-                    
-                    showMessage(`사용자 '${username}'의 VIP 권한이 제거되었습니다.`, 'success');
+                // 2. 데이터베이스 상태 업데이트 (실제로는 API 호출이 필요하지만 여기서는 캐시 업데이트로 시뮬레이션)
+                try {
+                    const dbUsersJson = localStorage.getItem('db_users_cache');
+                    if (dbUsersJson) {
+                        const dbUsers = JSON.parse(dbUsersJson);
+                        const dbUserIndex = dbUsers.findIndex(user => user.username === username);
+                        
+                        if (dbUserIndex !== -1) {
+                            if (makeVip) {
+                                const today = new Date();
+                                const expiryDate = new Date(today);
+                                expiryDate.setDate(today.getDate() + 30); // 30일 후
+                                
+                                dbUsers[dbUserIndex].membership_type = 'vip';
+                                dbUsers[dbUserIndex].vip_status = 'approved';
+                                dbUsers[dbUserIndex].membership_expiry = expiryDate.toISOString();
+                                dbUsers[dbUserIndex].updated_at = new Date().toISOString();
+                            } else {
+                                dbUsers[dbUserIndex].membership_type = 'basic';
+                                dbUsers[dbUserIndex].vip_status = 'none';
+                                dbUsers[dbUserIndex].membership_expiry = null;
+                                dbUsers[dbUserIndex].updated_at = new Date().toISOString();
+                            }
+                            
+                            localStorage.setItem('db_users_cache', JSON.stringify(dbUsers));
+                        }
+                    }
+                } catch (e) {
+                    console.error('데이터베이스 사용자 상태 업데이트 오류:', e);
                 }
                 
-                // 로컬 스토리지 업데이트
-                localStorage.setItem('smart_content_users', JSON.stringify(users));
+                const actionText = makeVip ? 'VIP로 업그레이드' : 'VIP 권한 제거';
+                showMessage(`사용자 '${username}'가 ${actionText} 되었습니다.`, 'success');
                 
                 // 테이블 다시 로드
                 loadUsers();
@@ -238,7 +330,7 @@
         }
         
         // 사용자 삭제 함수
-        function deleteUser(username) {
+        async function deleteUser(username) {
             if (confirm(`정말로 사용자 '${username}'를 삭제하시겠습니까?`)) {
                 try {
                     // 관리자는 삭제할 수 없음
@@ -247,12 +339,22 @@
                         return;
                     }
                     
-                    // 로컬 스토리지에서 사용자 정보 가져오기
+                    // 1. 로컬 스토리지에서 사용자 삭제
                     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
                     const filteredUsers = users.filter(user => user.username !== username);
-                    
-                    // 로컬 스토리지 업데이트
                     localStorage.setItem('smart_content_users', JSON.stringify(filteredUsers));
+                    
+                    // 2. 데이터베이스에서 사용자 삭제 (실제로는 API 호출이 필요하지만 여기서는 캐시 업데이트로 시뮬레이션)
+                    try {
+                        const dbUsersJson = localStorage.getItem('db_users_cache');
+                        if (dbUsersJson) {
+                            const dbUsers = JSON.parse(dbUsersJson);
+                            const filteredDbUsers = dbUsers.filter(user => user.username !== username);
+                            localStorage.setItem('db_users_cache', JSON.stringify(filteredDbUsers));
+                        }
+                    } catch (e) {
+                        console.error('데이터베이스 사용자 삭제 오류:', e);
+                    }
                     
                     showMessage(`사용자 '${username}'가 삭제되었습니다.`, 'success');
                     
@@ -266,12 +368,13 @@
         }
         
         // 사용자 목록 불러오기
-        function loadUsers() {
+        async function loadUsers() {
             const userListBody = document.getElementById('user-list-body');
             userListBody.innerHTML = '';
             
             try {
-                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                // API에서 사용자 목록 가져오기
+                const users = await fetchUsers();
                 
                 // 통계 업데이트
                 document.getElementById('total-users').textContent = users.length;

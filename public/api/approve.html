@@ -91,41 +91,105 @@
                 return;
             }
             
-            // 사용자 데이터 가져오기
+            // 사용자 찾기 (로컬 스토리지와 데이터베이스 캐시 모두 확인)
             try {
-                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                const userIndex = users.findIndex(user => user.username === userId);
+                // 1. 로컬 스토리지에서 사용자 확인
+                const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                let userFound = false;
+                let userIndex = localUsers.findIndex(user => 
+                    user.username && user.username.toLowerCase() === userId.toLowerCase()
+                );
                 
+                // 2. 데이터베이스 캐시에서도 확인
+                const dbUsers = JSON.parse(localStorage.getItem('db_users_cache') || '[]');
+                const dbUserIndex = dbUsers.findIndex(user => 
+                    user.username && user.username.toLowerCase() === userId.toLowerCase()
+                );
+                
+                console.log('사용자 검색 결과:', {
+                    userId: userId,
+                    localStorageIndex: userIndex,
+                    dbCacheIndex: dbUserIndex,
+                    localUsers: localUsers,
+                    dbUsers: dbUsers
+                });
+                
+                // 로컬 스토리지에서 사용자를 찾지 못한 경우
                 if (userIndex === -1) {
-                    showError('사용자 없음', `사용자 ID ${userId}를 찾을 수 없습니다.`);
-                    return;
+                    // 데이터베이스에서 찾았다면 로컬 스토리지에 추가
+                    if (dbUserIndex !== -1) {
+                        const dbUser = dbUsers[dbUserIndex];
+                        
+                        // DB 사용자 형식을 로컬 스토리지 형식으로 변환
+                        const newUser = {
+                            username: dbUser.username,
+                            password: dbUser.password || 'encrypted',  // 보안상 실제 비밀번호는 포함하지 않음
+                            membershipType: dbUser.membership_type || 'basic',
+                            vipStatus: dbUser.vip_status || 'none',
+                            membershipExpiry: dbUser.membership_expiry || null,
+                            createdAt: dbUser.created_at || new Date().toISOString(),
+                            updatedAt: dbUser.updated_at || new Date().toISOString()
+                        };
+                        
+                        // 로컬 스토리지에 사용자 추가
+                        localUsers.push(newUser);
+                        userIndex = localUsers.length - 1;
+                        userFound = true;
+                        
+                        console.log('DB에서 사용자를 찾아 로컬 스토리지에 추가했습니다:', newUser);
+                    } else {
+                        showError('사용자 없음', `사용자 ID ${userId}를 찾을 수 없습니다.`);
+                        console.error('사용자를 찾을 수 없습니다:', userId);
+                        return;
+                    }
+                } else {
+                    userFound = true;
                 }
                 
-                // 승인 처리
-                if (action === 'approve') {
-                    // VIP로 업그레이드
-                    const today = new Date();
-                    const expiryDate = new Date(today);
-                    expiryDate.setDate(today.getDate() + 30); // 30일 후
-                    
-                    users[userIndex].membershipType = 'vip';
-                    users[userIndex].vipStatus = 'approved';
-                    users[userIndex].membershipExpiry = expiryDate.toISOString();
-                    users[userIndex].updatedAt = new Date().toISOString();
-                    
-                    // 로컬 스토리지 업데이트
-                    localStorage.setItem('smart_content_users', JSON.stringify(users));
-                    
-                    showSuccess('승인 완료', `사용자 ${userId}의 VIP 신청이 승인되었습니다. 30일 동안 VIP 혜택을 이용할 수 있습니다.`);
-                } else if (action === 'reject') {
-                    // 거절 처리
-                    users[userIndex].vipStatus = 'rejected';
-                    users[userIndex].updatedAt = new Date().toISOString();
-                    
-                    // 로컬 스토리지 업데이트
-                    localStorage.setItem('smart_content_users', JSON.stringify(users));
-                    
-                    showError('신청 거절됨', `사용자 ${userId}의 VIP 신청이 거절되었습니다.`);
+                // 사용자를 찾았으면 승인/거절 처리
+                if (userFound) {
+                    // 승인 처리
+                    if (action === 'approve') {
+                        // VIP로 업그레이드
+                        const today = new Date();
+                        const expiryDate = new Date(today);
+                        expiryDate.setDate(today.getDate() + 30); // 30일 후
+                        
+                        localUsers[userIndex].membershipType = 'vip';
+                        localUsers[userIndex].vipStatus = 'approved';
+                        localUsers[userIndex].membershipExpiry = expiryDate.toISOString();
+                        localUsers[userIndex].updatedAt = new Date().toISOString();
+                        
+                        // 로컬 스토리지 업데이트
+                        localStorage.setItem('smart_content_users', JSON.stringify(localUsers));
+                        
+                        // 데이터베이스 캐시 업데이트 (있는 경우)
+                        if (dbUserIndex !== -1) {
+                            dbUsers[dbUserIndex].membership_type = 'vip';
+                            dbUsers[dbUserIndex].vip_status = 'approved';
+                            dbUsers[dbUserIndex].membership_expiry = expiryDate.toISOString();
+                            dbUsers[dbUserIndex].updated_at = new Date().toISOString();
+                            localStorage.setItem('db_users_cache', JSON.stringify(dbUsers));
+                        }
+                        
+                        showSuccess('승인 완료', `사용자 ${userId}의 VIP 신청이 승인되었습니다. 30일 동안 VIP 혜택을 이용할 수 있습니다.`);
+                    } else if (action === 'reject') {
+                        // 거절 처리
+                        localUsers[userIndex].vipStatus = 'rejected';
+                        localUsers[userIndex].updatedAt = new Date().toISOString();
+                        
+                        // 로컬 스토리지 업데이트
+                        localStorage.setItem('smart_content_users', JSON.stringify(localUsers));
+                        
+                        // 데이터베이스 캐시 업데이트 (있는 경우)
+                        if (dbUserIndex !== -1) {
+                            dbUsers[dbUserIndex].vip_status = 'rejected';
+                            dbUsers[dbUserIndex].updated_at = new Date().toISOString();
+                            localStorage.setItem('db_users_cache', JSON.stringify(dbUsers));
+                        }
+                        
+                        showError('신청 거절됨', `사용자 ${userId}의 VIP 신청이 거절되었습니다.`);
+                    }
                 }
             } catch (error) {
                 console.error('VIP 상태 변경 중 오류:', error);
