@@ -10,17 +10,42 @@ import { executeQuery } from '../lib/db';
 const DatabaseInitializer = () => {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState('데이터베이스 초기화 중...');
+  const [showMessage, setShowMessage] = useState(true);
 
   useEffect(() => {
     const initDb = async () => {
       try {
         console.log('데이터베이스 초기화 중...');
+        setMessage('데이터베이스 연결 및 초기화 중...');
+        
+        // 데이터베이스 연결 테스트
+        try {
+          const testResult = await executeQuery('SELECT NOW() as time');
+          if (testResult.success) {
+            console.log('데이터베이스 연결 성공:', testResult.data);
+            setMessage('데이터베이스 연결 성공! 초기화 진행 중...');
+          } else {
+            console.error('데이터베이스 연결 테스트 실패:', testResult.error);
+            setMessage('데이터베이스 연결 실패! 로컬 모드로 전환합니다...');
+            // 오류 발생 시 3초 후 메시지 숨김
+            setTimeout(() => setShowMessage(false), 3000);
+            return;
+          }
+        } catch (connError) {
+          console.error('데이터베이스 연결 오류:', connError);
+          setMessage('데이터베이스 연결 오류! 로컬 모드로 전환합니다...');
+          // 오류 발생 시 3초 후 메시지 숨김
+          setTimeout(() => setShowMessage(false), 3000);
+          return;
+        }
         
         // 데이터베이스 초기화 (테이블 생성)
         const result = await initializeDatabase();
         
         if (result.success) {
           console.log('데이터베이스 초기화 성공');
+          setMessage('데이터베이스 초기화 성공! 데이터 마이그레이션 중...');
           
           // 로컬 스토리지에서 사용자 데이터 가져오기
           const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
@@ -29,6 +54,12 @@ const DatabaseInitializer = () => {
           // 각 사용자를 데이터베이스에 마이그레이션
           for (const user of localUsers) {
             try {
+              // 사용자명 확인
+              if (!user.username) {
+                console.error('유효하지 않은 사용자 데이터:', user);
+                continue;
+              }
+              
               // 사용자가 이미 존재하는지 확인
               const checkResult = await executeQuery('SELECT * FROM users WHERE username = $1', [user.username]);
               
@@ -69,26 +100,59 @@ const DatabaseInitializer = () => {
               // 관리자 페이지에서 사용할 수 있도록 로컬 스토리지에 임시 캐시
               localStorage.setItem('db_users_cache', JSON.stringify(allUsers.data));
               console.log(`데이터베이스에서 ${allUsers.data.length}명의 사용자 정보를 캐시했습니다`);
+              setMessage(`데이터베이스 초기화 완료! ${allUsers.data.length}명의 사용자 정보 로드됨`);
+              
+              // 3초 후 메시지 숨김
+              setTimeout(() => setShowMessage(false), 3000);
             }
           } catch (cacheError) {
             console.error('사용자 데이터 캐싱 중 오류:', cacheError);
+            setMessage('데이터베이스는 초기화되었지만 사용자 데이터 로드에 문제가 발생했습니다');
+            // 오류 발생 시 3초 후 메시지 숨김
+            setTimeout(() => setShowMessage(false), 3000);
           }
           
           setInitialized(true);
         } else {
           console.error('데이터베이스 초기화 실패:', result.error);
           setError(result.error);
+          setMessage(`데이터베이스 초기화 실패: ${result.error}`);
+          // 오류 발생 시 3초 후 메시지 숨김
+          setTimeout(() => setShowMessage(false), 3000);
         }
       } catch (err) {
         console.error('데이터베이스 초기화 중 오류 발생:', err);
         setError(err.message || '알 수 없는 오류');
+        setMessage(`데이터베이스 오류: ${err.message || '알 수 없는 오류'}`);
+        // 오류 발생 시 3초 후 메시지 숨김
+        setTimeout(() => setShowMessage(false), 3000);
       }
     };
 
     initDb();
   }, []);
 
-  // 이 컴포넌트는 UI를 렌더링하지 않습니다
+  // 메시지 UI 컴포넌트 렌더링
+  if (showMessage) {
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        backgroundColor: error ? '#f8d7da' : '#d4edda',
+        color: error ? '#721c24' : '#155724',
+        padding: '10px 15px',
+        borderRadius: '4px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        zIndex: 9999,
+        maxWidth: '300px'
+      }}>
+        {message}
+      </div>
+    );
+  }
+  
+  // 메시지가 표시되지 않을 때는 null 반환
   return null;
 };
 

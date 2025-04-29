@@ -117,14 +117,21 @@ const localStorageDB = {
   }
 };
 
+// 고정 연결 문자열 (공유 데이터베이스용)
+// 실제 프로덕션에서는 환경 변수로 관리하는 것이 좋지만, 다른 기기에서도 같은 DB에 접근할 수 있도록 임시로 사용
+const SHARED_DB_URL = "postgres://default:y2rEQCTNz6bI@ep-late-mode-88705225.us-east-1.postgres.vercel-storage.com:5432/verceldb";
+
 // 환경에 따라 적절한 데이터베이스 클라이언트 선택
 let pool;
 
 try {
   // Vercel Postgres 연결 (배포 환경)
-  if (process.env.DATABASE_URL || process.env.DB__DATABASE_URL || process.env.POSTGRES_URL) {
+  const connectionString = process.env.DATABASE_URL || process.env.DB__DATABASE_URL || process.env.POSTGRES_URL || SHARED_DB_URL;
+  
+  if (connectionString) {
     pool = createPool({
-      connectionString: process.env.DATABASE_URL || process.env.DB__DATABASE_URL || process.env.POSTGRES_URL
+      connectionString: connectionString,
+      ssl: true
     });
     console.log('Vercel Postgres 데이터베이스에 연결되었습니다.');
   } else {
@@ -141,7 +148,9 @@ try {
 // 쿼리 실행 함수
 export async function executeQuery(query, params = []) {
   try {
+    console.log('SQL 쿼리 실행:', query, params);
     const result = await pool.query(query, params);
+    console.log('쿼리 결과:', result.rows);
     return { success: true, data: result.rows };
   } catch (error) {
     console.error('데이터베이스 쿼리 오류:', error);
