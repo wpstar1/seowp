@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>워프스타 콘텐츠 크리에이터 - 관리자 페이지</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .admin-header {
+            background-color: #333;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        .logo-dot {
+            color: #8A4FFF;
+            font-size: 28px;
+            margin-right: 8px;
+        }
+        .admin-title {
+            margin: 20px 0;
+            color: #333;
+        }
+        .admin-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .admin-card h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .user-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .user-list th, .user-list td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .user-list th {
+            background-color: #f9f9f9;
+        }
+        .user-list tr:hover {
+            background-color: #f5f5f5;
+        }
+        .vip-tag {
+            background-color: #8A4FFF;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .vip-button {
+            background-color: #8A4FFF;
+            color: white;
+        }
+        .delete-button {
+            background-color: #E84855;
+            color: white;
+        }
+        .back-button {
+            padding: 8px 15px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <div class="admin-logo">
+            <span class="logo-dot">🟣</span>
+            <span>워프스타 Content Creator</span>
+        </div>
+        <button class="back-button" onclick="goBack()">메인으로 돌아가기</button>
+    </div>
+
+    <div class="admin-container">
+        <h1 class="admin-title">관리자 대시보드</h1>
+        
+        <div id="message-container"></div>
+
+        <div class="admin-card">
+            <h2>사용자 관리</h2>
+            <table class="user-list" id="user-table">
+                <thead>
+                    <tr>
+                        <th>아이디</th>
+                        <th>가입일</th>
+                        <th>멤버십 상태</th>
+                        <th>VIP 만료일</th>
+                        <th>상태</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody id="user-list-body">
+                    <!-- 사용자 목록이 JavaScript로 여기에 로드됩니다 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="admin-card">
+            <h2>통계</h2>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                <div style="min-width: 200px; margin-bottom: 15px;">
+                    <strong>총 사용자:</strong> <span id="total-users">0</span>
+                </div>
+                <div style="min-width: 200px; margin-bottom: 15px;">
+                    <strong>VIP 사용자:</strong> <span id="vip-users">0</span>
+                </div>
+                <div style="min-width: 200px; margin-bottom: 15px;">
+                    <strong>오늘 생성된 콘텐츠:</strong> <span id="contents-today">0</span>
+                </div>
+                <div style="min-width: 200px; margin-bottom: 15px;">
+                    <strong>총 콘텐츠 생성수:</strong> <span id="total-contents">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 메인으로 돌아가기
+        function goBack() {
+            window.location.href = "/";
+        }
+
+        // 메시지 표시 함수
+        function showMessage(text, type) {
+            const messageContainer = document.getElementById('message-container');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = text;
+            messageContainer.appendChild(messageElement);
+            
+            // 자동 제거
+            setTimeout(() => {
+                messageElement.style.opacity = '0';
+                messageElement.style.transition = 'opacity 0.5s';
+                setTimeout(() => messageContainer.removeChild(messageElement), 500);
+            }, 4000);
+        }
+
+        // VIP 상태 변경 함수
+        function changeVipStatus(username, makeVip) {
+            try {
+                // 로컬 스토리지에서 사용자 정보 가져오기
+                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                const userIndex = users.findIndex(user => user.username === username);
+                
+                if (userIndex === -1) {
+                    showMessage(`사용자 '${username}'를 찾을 수 없습니다.`, 'error');
+                    return;
+                }
+                
+                // VIP 상태 변경
+                if (makeVip) {
+                    // VIP로 업그레이드
+                    const today = new Date();
+                    const expiryDate = new Date(today);
+                    expiryDate.setDate(today.getDate() + 30); // 30일 후
+                    
+                    users[userIndex].membershipType = 'vip';
+                    users[userIndex].vipStatus = 'approved';
+                    users[userIndex].membershipExpiry = expiryDate.toISOString();
+                    users[userIndex].updatedAt = new Date().toISOString();
+                    
+                    showMessage(`사용자 '${username}'가 VIP로 업그레이드되었습니다.`, 'success');
+                } else {
+                    // VIP 제거
+                    users[userIndex].membershipType = 'basic';
+                    users[userIndex].vipStatus = 'none';
+                    users[userIndex].membershipExpiry = null;
+                    users[userIndex].updatedAt = new Date().toISOString();
+                    
+                    showMessage(`사용자 '${username}'의 VIP 권한이 제거되었습니다.`, 'success');
+                }
+                
+                // 로컬 스토리지 업데이트
+                localStorage.setItem('smart_content_users', JSON.stringify(users));
+                
+                // 테이블 다시 로드
+                loadUsers();
+            } catch (error) {
+                console.error('VIP 상태 변경 중 오류:', error);
+                showMessage('VIP 상태 변경 중 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 사용자 삭제 함수
+        function deleteUser(username) {
+            if (confirm(`정말로 사용자 '${username}'를 삭제하시겠습니까?`)) {
+                try {
+                    // 관리자는 삭제할 수 없음
+                    if (username === '1111') {
+                        showMessage('관리자 계정은 삭제할 수 없습니다.', 'error');
+                        return;
+                    }
+                    
+                    // 로컬 스토리지에서 사용자 정보 가져오기
+                    const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                    const filteredUsers = users.filter(user => user.username !== username);
+                    
+                    // 로컬 스토리지 업데이트
+                    localStorage.setItem('smart_content_users', JSON.stringify(filteredUsers));
+                    
+                    showMessage(`사용자 '${username}'가 삭제되었습니다.`, 'success');
+                    
+                    // 테이블 다시 로드
+                    loadUsers();
+                } catch (error) {
+                    console.error('사용자 삭제 중 오류:', error);
+                    showMessage('사용자 삭제 중 오류가 발생했습니다.', 'error');
+                }
+            }
+        }
+        
+        // 사용자 목록 불러오기
+        function loadUsers() {
+            const userListBody = document.getElementById('user-list-body');
+            userListBody.innerHTML = '';
+            
+            try {
+                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                
+                // 통계 업데이트
+                document.getElementById('total-users').textContent = users.length;
+                document.getElementById('vip-users').textContent = users.filter(user => 
+                    user.membershipType === 'vip' && user.vipStatus === 'approved'
+                ).length;
+                
+                // 콘텐츠 통계는 더미 데이터 사용
+                document.getElementById('contents-today').textContent = Math.floor(Math.random() * 20);
+                document.getElementById('total-contents').textContent = Math.floor(Math.random() * 200) + 50;
+                
+                // 사용자 목록이 비어있는 경우
+                if (users.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="6" style="text-align: center;">등록된 사용자가 없습니다.</td>`;
+                    userListBody.appendChild(row);
+                    return;
+                }
+                
+                // 각 사용자 행 생성
+                users.forEach(user => {
+                    const isVip = user.membershipType === 'vip' && user.vipStatus === 'approved';
+                    const row = document.createElement('tr');
+                    
+                    // VIP 만료일 계산
+                    let expiryText = '-';
+                    if (isVip && user.membershipExpiry) {
+                        const expiryDate = new Date(user.membershipExpiry);
+                        expiryText = expiryDate.toLocaleDateString();
+                    }
+                    
+                    // 가입일 계산
+                    let createdAtText = '알 수 없음';
+                    if (user.createdAt) {
+                        createdAtText = new Date(user.createdAt).toLocaleDateString();
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${user.username}</td>
+                        <td>${createdAtText}</td>
+                        <td>${isVip ? '<span class="vip-tag">VIP</span>' : '일반회원'}</td>
+                        <td>${expiryText}</td>
+                        <td>${user.vipStatus === 'pending' ? '승인 대기중' : '-'}</td>
+                        <td>
+                            ${isVip 
+                                ? `<button class="action-button delete-button" onclick="changeVipStatus('${user.username}', false)">VIP 해제</button>`
+                                : `<button class="action-button vip-button" onclick="changeVipStatus('${user.username}', true)">VIP 부여</button>`
+                            }
+                            <button class="action-button delete-button" onclick="deleteUser('${user.username}')">삭제</button>
+                        </td>
+                    `;
+                    
+                    userListBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('사용자 목록 로드 중 오류:', error);
+                showMessage('사용자 목록을 로드하는 중 오류가 발생했습니다.', 'error');
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="6" style="text-align: center; color: red;">사용자 데이터를 로드하는 중 오류가 발생했습니다.</td>`;
+                userListBody.appendChild(row);
+            }
+        }
+        
+        // 페이지 로드 시 사용자 목록 불러오기
+        window.addEventListener('load', () => {
+            loadUsers();
+            showMessage('관리자 페이지에 접속했습니다.', 'info');
+        });
+    </script>
+</body>
+</html>

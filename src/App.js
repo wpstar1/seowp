@@ -109,6 +109,18 @@ function App() {
     const checkApprovedUsers = async () => {
       if (!username) return;
       
+      // 먼저 isVip 상태를 false로 초기화 (관리자 제외)
+      if (username !== '1111') {
+        setIsVip(false);
+      }
+      
+      // 관리자 계정(1111)은 항상 VIP 상태를 가지므로 API 호출 불필요
+      if (username === '1111') {
+        setIsVip(true);
+        console.log('관리자 계정(1111)은 자동으로 VIP 권한이 부여됩니다.');
+        return;
+      }
+      
       console.log('VIP 상태 확인 중...', username);
       try {
         // API 호출 전 로컬 스토리지 상태 확인
@@ -116,73 +128,98 @@ function App() {
         const initialUser = initialUsers.find(u => u.username === username);
         console.log('API 호출 전 사용자 상태:', initialUser);
         
-        const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
-        if (!response.ok) {
-          console.error('API 응답 오류:', response.status);
+        // VIP 상태 재확인 (두 조건 모두 충족해야 함)
+        if (initialUser && initialUser.membershipType === 'vip' && initialUser.vipStatus === 'approved') {
+          console.log('사용자는 VIP 회원입니다. API 호출 건너뜁니다.');
+          setIsVip(true);
           return;
+        } else {
+          console.log('사용자는 VIP 회원이 아닙니다.');
+          setIsVip(false);
         }
         
-        const data = await response.json();
-        console.log('API 응답 데이터:', data);
-        
-        if (data.success && Array.isArray(data.approvedUsers)) {
-          // 대소문자 구분 없이 비교
-          const approvedUser = data.approvedUsers.find(u => 
-            u.userId.toLowerCase() === username.toLowerCase()
-          );
-          console.log('승인된 사용자 찾기 결과:', approvedUser);
+        // API 호출 시도
+        try {
+          const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
+          if (!response.ok) {
+            console.error('API 응답 오류:', response.status);
+            return;
+          }
           
-          if (approvedUser && approvedUser.approvalStatus === 'approved') {
-            console.log('VIP 승인 상태 확인됨:', approvedUser);
+          const responseText = await response.text();
+          let data;
+          
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('API 응답이 유효한 JSON이 아닙니다:', parseError);
+            console.log('응답 내용 일부:', responseText.substring(0, 100));
+            return;
+          }
+          
+          console.log('API 응답 데이터:', data);
+          
+          if (data.success && Array.isArray(data.approvedUsers)) {
+            // 대소문자 구분 없이 비교
+            const approvedUser = data.approvedUsers.find(u => 
+              u.userId.toLowerCase() === username.toLowerCase()
+            );
+            console.log('승인된 사용자 찾기 결과:', approvedUser);
             
-            // 현재 사용자가 VIP가 아니라면 업데이트
-            const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-            // 대소문자 구분 없이 사용자 찾기
-            const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
-            console.log('사용자 인덱스:', userIndex);
-            
-            if (userIndex !== -1) {
-              // 사용자 VIP 상태 업데이트
-              const today = new Date();
-              const expiryDate = new Date(today);
-              expiryDate.setDate(today.getDate() + 30); // 30일 후
+            if (approvedUser && approvedUser.approvalStatus === 'approved') {
+              console.log('VIP 승인 상태 확인됨:', approvedUser);
               
-              // 기존 사용자 데이터 백업
-              const beforeUpdate = {...users[userIndex]};
-              console.log('업데이트 전 사용자 데이터:', beforeUpdate);
+              // 현재 사용자가 VIP가 아니라면 업데이트
+              const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+              // 대소문자 구분 없이 사용자 찾기
+              const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+              console.log('사용자 인덱스:', userIndex);
               
-              users[userIndex].membershipType = 'vip';
-              users[userIndex].vipStatus = 'approved';
-              users[userIndex].membershipExpiry = expiryDate.toISOString();
-              users[userIndex].updatedAt = new Date().toISOString();
-              
-              console.log('업데이트 후 사용자 데이터:', users[userIndex]);
-              
-              // 로컬 스토리지 업데이트
-              localStorage.setItem('smart_content_users', JSON.stringify(users));
-              console.log('로컬 스토리지 업데이트 완료');
-              
-              // 현재 사용자 정보 업데이트
-              const updatedUser = {...users[userIndex]};
-              
-              setIsLoggedIn(true);
-              setUsername(updatedUser.username);
-              setIsVip(true);  // VIP 상태 업데이트
-              console.log('React 상태 업데이트 완료: isVip =', true);
-              
-              // 상태 변경 후 강제로 UI 업데이트를 위한 추가 처리
-              setTimeout(() => {
-                // 상태가 제대로 반영되었는지 다시 확인
-                console.log('타임아웃 후 VIP 상태 다시 확인:', isVip);
+              if (userIndex !== -1) {
+                // 사용자 VIP 상태 업데이트
+                const today = new Date();
+                const expiryDate = new Date(today);
+                expiryDate.setDate(today.getDate() + 30); // 30일 후
                 
-                // 상태가 false로 남아있다면 강제로 다시 설정
-                if (!isVip) {
-                  console.log('강제 VIP 상태 업데이트 적용');
-                  setIsVip(true);
-                }
-              }, 500);
+                // 기존 사용자 데이터 백업
+                const beforeUpdate = {...users[userIndex]};
+                console.log('업데이트 전 사용자 데이터:', beforeUpdate);
+                
+                users[userIndex].membershipType = 'vip';
+                users[userIndex].vipStatus = 'approved';
+                users[userIndex].membershipExpiry = expiryDate.toISOString();
+                users[userIndex].updatedAt = new Date().toISOString();
+                
+                console.log('업데이트 후 사용자 데이터:', users[userIndex]);
+                
+                // 로컬 스토리지 업데이트
+                localStorage.setItem('smart_content_users', JSON.stringify(users));
+                console.log('로컬 스토리지 업데이트 완료');
+                
+                // 현재 사용자 정보 업데이트
+                const updatedUser = {...users[userIndex]};
+                
+                setIsLoggedIn(true);
+                setUsername(updatedUser.username);
+                setIsVip(true);  // VIP 상태 업데이트
+                console.log('React 상태 업데이트 완료: isVip =', true);
+                
+                // 상태 변경 후 강제로 UI 업데이트를 위한 추가 처리
+                setTimeout(() => {
+                  // 상태가 제대로 반영되었는지 다시 확인
+                  console.log('타임아웃 후 VIP 상태 다시 확인:', isVip);
+                  
+                  // 상태가 false로 남아있다면 강제로 다시 설정
+                  if (!isVip) {
+                    console.log('강제 VIP 상태 업데이트 적용');
+                    setIsVip(true);
+                  }
+                }, 500);
+              }
             }
           }
+        } catch (apiError) {
+          console.error('API 통신 중 오류 발생:', apiError);
         }
       } catch (error) {
         console.error('승인 상태 확인 중 오류:', error);
@@ -198,7 +235,7 @@ function App() {
     return () => {
       clearInterval(intervalId); // 컴포넌트 언마운트 시 인터벌 제거
     };
-  }, [username]);
+  }, [username, isVip]);
 
   // 과거 사용 키워드 기반 추천 키워드 생성
   const generateRecentKeywordRecommendations = () => {
@@ -617,13 +654,13 @@ function App() {
       // 이미지 캡션 생성
       const getImageCaption = (index) => {
         const captions = [
-          `그림 ${index + 1}: ${keyword} 관련 이미지`,
-          `${keyword}의 실제 적용 사례`,
-          `${keyword} 시각화 자료`,
-          `${keyword} 관련 참고 이미지 ${index + 1}`,
-          `${keyword}에 대한 이해를 돕는 이미지`
+          `${keyword}에 관한 이미지입니다.`,
+          `${keyword}을(를) 시각적으로 보여주는 참고자료입니다.`,
+          `${keyword}의 실제 적용 사례를 보여주는 이미지입니다.`,
+          `${keyword}에 대한 이해를 돕는 시각자료입니다.`,
+          `${keyword}와 관련된 중요한 시각적 정보입니다.`
         ];
-        return captions[Math.floor(Math.random() * captions.length)];
+        return captions[index % captions.length];
       };
       
       // 이미지 삽입
@@ -750,6 +787,18 @@ ${keyword}의 가장 좋은 점은 뭐니뭐니해도 이런 것들이에요:
 - 지속가능한 모델 구축하기
 
 제가 취미로 하는 그림 그리기에 ${keyword} 개념을 접목해봤는데, 생각보다 재밌는 결과가 나왔어요. 생각지도 못한 분야에서 빛을 발하더라고요! ${getRandomEmoji()}
+
+## ${addEmojiWithProbability(keyword + '의 장점')} 
+
+${keyword}의 가장 좋은 점은 뭐니뭐니해도 이런 것들이에요:
+
+1. **시간 절약**: 기존보다 30-50% 정도 시간을 아낄 수 있어요. 저도 처음엔 반신반의했는데, 직접 해보니 확실히 달라요!
+
+2. **다양한 상황에 적용 가능**: 작은 취미부터 대기업 시스템까지... 정말 어디든 활용할 수 있어요. ${getRandomEmoji()} 저는 주로 개인 프로젝트에 쓰고 있는데 정말 편해요.
+
+3. **진입장벽이 낮아요**: 전문지식 없이도 시작할 수 있어요. 요즘은 좋은 입문서도 많고, 유튜브에도 친절한 강의가 많아서 배우기 쉬워요.
+
+4. **비용 효율적**: 초기 투자 비용이 있긴 하지만, 장기적으로 보면 정말 이득이에요. 제 경우엔 6개월 만에 원금 회수했어요. ${getRandomEmoji()}
 
 ## ${addEmojiWithProbability('실제 성공 사례들')}
 
@@ -1067,13 +1116,10 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
       const textType = "text/plain";
       
       // 두 가지 형식 모두 클립보드에 저장
-      const htmlBlob = new Blob([styledContent], { type: htmlType });
-      const textBlob = new Blob([plainTextVersion], { type: textType });
-      
       const data = [
         new ClipboardItem({
-          [htmlType]: htmlBlob,
-          [textType]: textBlob
+          [htmlType]: new Blob([styledContent], { type: htmlType }),
+          [textType]: new Blob([plainTextVersion], { type: textType })
         })
       ];
 
@@ -1218,13 +1264,39 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     setIsLoggedIn(true);
     setShowLoginModal(false);
     
-    // VIP 상태 확인 및 설정
-    if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-      console.log('로그인: 사용자는 VIP 회원입니다.');
+    // 관리자 계정(1111) 자동 VIP 상태 부여
+    if (user.username === '1111') {
+      console.log('로그인: 관리자 계정은 자동으로 VIP 회원 권한을 받습니다.');
+      
+      // 관리자에게 VIP 상태 자동 부여
+      const userIndex = users.findIndex(u => u.username === '1111');
+      if (userIndex !== -1) {
+        // 기존 VIP 상태가 아닌 경우에만 업데이트
+        if (users[userIndex].membershipType !== 'vip' || users[userIndex].vipStatus !== 'approved') {
+          // VIP 정보 설정
+          const today = new Date();
+          const expiryDate = new Date(today);
+          expiryDate.setDate(today.getDate() + 365); // 1년 만료
+          
+          users[userIndex].membershipType = 'vip';
+          users[userIndex].vipStatus = 'approved';
+          users[userIndex].membershipExpiry = expiryDate.toISOString();
+          users[userIndex].updatedAt = new Date().toISOString();
+          
+          console.log('관리자 계정 VIP 상태 업데이트 완료');
+        }
+      }
+      
       setIsVip(true);
     } else {
-      console.log('로그인: 사용자는 일반 회원입니다.');
-      setIsVip(false);
+      // 일반 사용자는 기존 로직대로 VIP 상태 확인
+      if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
+        console.log('로그인: 사용자는 VIP 회원입니다.');
+        setIsVip(true);
+      } else {
+        console.log('로그인: 사용자는 일반 회원입니다.');
+        setIsVip(false);
+      }
     }
     
     setAuthError("");
@@ -1531,6 +1603,22 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
         </div>
         {isLoggedIn ? (
           <div className="header-actions">
+            {username === '1111' && (  // 관리자(1111) 계정일 경우만 관리자 버튼 표시
+              <button 
+                className="admin-button"
+                onClick={() => {
+                  // 관리자 페이지를 새 창에서 열기
+                  window.open('/admin.html', '_blank');
+                }}
+                style={{ 
+                  backgroundColor: '#E84855', 
+                  marginRight: '10px',
+                  fontWeight: 'bold'
+                }}
+              >
+                관리자
+              </button>
+            )}
             {!isVip && (  // VIP가 아닌 경우만 VIP 신청 버튼 표시
               <button 
                 className="vip-button"
@@ -1538,6 +1626,23 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
               >
                 VIP 신청
               </button>
+            )}
+            {isVip && (  // VIP인 경우 VIP 표시 배지
+              <div 
+                className="vip-badge"
+                style={{
+                  backgroundColor: '#8A4FFF',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  display: 'inline-block',
+                  marginRight: '10px'
+                }}
+              >
+                VIP 회원
+              </div>
             )}
             <button 
               className="login-button"
