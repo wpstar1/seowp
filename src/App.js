@@ -2828,8 +2828,12 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                           // 텔레그램 메시지 전송
                           const approvalId = Date.now().toString(); // 고유 승인 ID 생성
                           
+                          // 애플리케이션의 기본 URL을 사용하고 로컬 승인 페이지 경로 사용
+                          const baseUrl = window.location.origin;
+                          const approveUrl = `${baseUrl}/api/approve.html?requestId=${approvalId}&action=approve&userId=${encodeURIComponent(currentUser)}&email=${encodeURIComponent(depositName)}`;
+                          
                           // 메시지에 승인 링크 포함
-                          const message = `💰 VIP 신청 요청\n\n사용자: ${currentUser}\n예금주: ${depositName}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\nhttps://seo-beige.vercel.app/api/approve?requestId=${approvalId}&action=approve&userId=${encodeURIComponent(currentUser)}&email=${encodeURIComponent(depositName)}`;
+                          const message = `💰 VIP 신청 요청\n\n사용자: ${currentUser}\n예금주: ${depositName}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\n${approveUrl}`;
                           
                           const TELEGRAM_BOT_TOKEN = "7937435896:AAEOi8fVqPyBiWf0BhJJvUv5F8V6DtQ67TM";
                           const TELEGRAM_CHAT_ID = "455532741";

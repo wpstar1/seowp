@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP 신청 승인</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .approval-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        .status-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .success-icon {
+            color: #4CAF50;
+        }
+        .error-icon {
+            color: #E84855;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+        .button {
+            background-color: #8A4FFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #7A3FEF;
+        }
+    </style>
+</head>
+<body>
+    <div class="approval-container" id="approvalContainer">
+        <div class="status-icon" id="statusIcon">⏳</div>
+        <h1 id="statusTitle">처리 중...</h1>
+        <p id="statusMessage">VIP 승인 요청을 처리하고 있습니다.</p>
+        <a href="/" class="button" id="homeButton">홈으로 돌아가기</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // URL 매개변수 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestId = urlParams.get('requestId');
+            const action = urlParams.get('action');
+            const userId = urlParams.get('userId');
+            const email = urlParams.get('email');
+            
+            // 상태 표시 요소
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // 파라미터 검증
+            if (!requestId || !action || !userId) {
+                showError('잘못된 요청', '필요한 정보가 누락되었습니다. 관리자에게 문의하세요.');
+                return;
+            }
+            
+            // action 검증
+            if (action !== 'approve' && action !== 'reject') {
+                showError('잘못된 작업', '승인 또는 거절 작업만 가능합니다.');
+                return;
+            }
+            
+            // 사용자 데이터 가져오기
+            try {
+                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                const userIndex = users.findIndex(user => user.username === userId);
+                
+                if (userIndex === -1) {
+                    showError('사용자 없음', `사용자 ID ${userId}를 찾을 수 없습니다.`);
+                    return;
+                }
+                
+                // 승인 처리
+                if (action === 'approve') {
+                    // VIP로 업그레이드
+                    const today = new Date();
+                    const expiryDate = new Date(today);
+                    expiryDate.setDate(today.getDate() + 30); // 30일 후
+                    
+                    users[userIndex].membershipType = 'vip';
+                    users[userIndex].vipStatus = 'approved';
+                    users[userIndex].membershipExpiry = expiryDate.toISOString();
+                    users[userIndex].updatedAt = new Date().toISOString();
+                    
+                    // 로컬 스토리지 업데이트
+                    localStorage.setItem('smart_content_users', JSON.stringify(users));
+                    
+                    showSuccess('승인 완료', `사용자 ${userId}의 VIP 신청이 승인되었습니다. 30일 동안 VIP 혜택을 이용할 수 있습니다.`);
+                } else if (action === 'reject') {
+                    // 거절 처리
+                    users[userIndex].vipStatus = 'rejected';
+                    users[userIndex].updatedAt = new Date().toISOString();
+                    
+                    // 로컬 스토리지 업데이트
+                    localStorage.setItem('smart_content_users', JSON.stringify(users));
+                    
+                    showError('신청 거절됨', `사용자 ${userId}의 VIP 신청이 거절되었습니다.`);
+                }
+            } catch (error) {
+                console.error('VIP 상태 변경 중 오류:', error);
+                showError('처리 오류', '처리 중 오류가 발생했습니다. 관리자에게 문의하세요.');
+            }
+        });
+        
+        // 성공 메시지 표시
+        function showSuccess(title, message) {
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusIcon.textContent = '✅';
+            statusIcon.className = 'status-icon success-icon';
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+        }
+        
+        // 오류 메시지 표시
+        function showError(title, message) {
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusIcon.textContent = '❌';
+            statusIcon.className = 'status-icon error-icon';
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+        }
+    </script>
+</body>
+</html>
