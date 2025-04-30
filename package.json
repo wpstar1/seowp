@@ -23,7 +23,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build"
+    "build": "prisma generate && prisma migrate deploy && react-scripts build",
+    "postinstall": "prisma generate"
   },
   "browserslist": {
     "production": [

@@ -3,10 +3,8 @@ import './App.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+import * as apiService from './services/apiService';
 import DatabaseInitializer from './components/DatabaseInitializer';
-import * as dbService from './services/dbIntegrationService';
-import * as prismaService from './services/prismaService';
-import * as prismaAuthService from './services/prismaAuthService';
 
 function App() {
   // 상태 관리
