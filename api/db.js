@@ -14,7 +14,7 @@ async function connectToDatabase() {
 
   try {
     // 여러 환경변수 이름 시도 (MONGO_URL, DATABASE_URL, MONGODB_URI 중 하나 사용)
-    const mongoUri = process.env.MONGO_URL || process.env.DATABASE_URL || process.env.MONGODB_URI;
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || process.env.DATABASE_URL;
     
     // 디버깅 로그 추가
     console.log('MongoDB 연결 시도 중...');
@@ -31,14 +31,22 @@ async function connectToDatabase() {
       return { client: null, db: null };
     }
 
+    // URI 디코딩 - URL 인코딩된 문자 처리
+    const decodedUri = decodeURIComponent(mongoUri);
+    
     // 연결 시도
     console.log('MongoDB에 연결 중...');
-    client = new MongoClient(mongoUri);
+    client = new MongoClient(decodedUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      connectTimeoutMS: 10000, // 타임아웃 10초로 늘림
+      socketTimeoutMS: 10000
+    });
     await client.connect();
     console.log('MongoDB 연결 성공!');
     
     // 데이터베이스 선택 (URI에서 데이터베이스 부분 추출)
-    const dbName = mongoUri.split('/').pop().split('?')[0] || 'smart_content_creator';
+    const dbName = decodedUri.split('/').pop().split('?')[0] || 'smart_content_creator';
     db = client.db(dbName);
     
     // 컬렉션이 존재하지 않으면 생성
