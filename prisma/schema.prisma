@@ -6,13 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("NEON_DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
 // 사용자 모델
 model User {
-  id              String    @id @default(uuid())
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
   username        String    @unique
   password        String
   membershipType  String    @default("regular") // "regular" 또는 "vip"
@@ -30,39 +30,39 @@ model User {
 
 // 링크 모델
 model Link {
-  id        String  @id @default(uuid())
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
   url       String
   keyword   String
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @db.ObjectId
+  user      User    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }
 
 // 이전에 사용한 키워드 모델
 model PreviousKeyword {
-  id        String  @id @default(uuid())
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
   keyword   String
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @db.ObjectId
+  user      User    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }
 
 // 생성된 콘텐츠 모델
 model GeneratedContent {
-  id          String  @id @default(uuid())
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   content     String  @db.Text
   keyword     String
   contentType String  @default("blog")
-  userId      String
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String  @db.ObjectId
+  user        User    @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 // VIP 신청 및 승인 로그
 model VipRequestLog {
-  id           String  @id @default(uuid())
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
   username     String
   status       String  // "pending", "approved", "rejected"
   depositName  String?

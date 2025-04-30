@@ -29,7 +29,7 @@ async function testConnection() {
     return { success: true, result: testResult };
   } catch (error) {
     console.error('데이터베이스 연결 실패:', error.message);
-    console.error('데이터베이스 URL:', process.env.NEON_DATABASE_URL ? '설정됨 (마스킹됨)' : '설정되지 않음');
+    console.error('데이터베이스 URL:', process.env.MONGODB_URI || process.env.NEON_DATABASE_URL ? '설정됨 (마스킹됨)' : '설정되지 않음');
     return { success: false, error };
   }
 }
