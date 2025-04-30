@@ -5,6 +5,9 @@ import { useAuth } from './contexts/LocalAuthContext';
 import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
+// OpenAI API 키
+const OPENAI_API_KEY = "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";
+
 function App() {
   // 인증 관련 변수
   const { currentUser, isAdmin, requestVipUpgrade } = useAuth();
@@ -93,6 +96,123 @@ function App() {
   
   // 콘텐츠 생성 함수
   const generateContent = async () => {
+    if (!keyword.trim()) {
+      alert('키워드를 입력해주세요.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setShowResult(false);
+    
+    try {
+      if (isVip) {
+        // VIP 회원용 OpenAI API 호출
+        try {
+          console.log("VIP 회원용 GPT 콘텐츠 생성 시작");
+          
+          // 제목 생성을 위한 프롬프트
+          const headlinePrompt = `
+키워드 "${keyword}"에 대한 SEO 최적화된 매력적인 블로그 제목 5개를 생성해주세요.
+제목들은 클릭을 유도하면서도 전문적이고 신뢰할 수 있어야 합니다.
+각 제목은 한 줄에 하나씩 작성해주세요.
+`;
+
+          // 본문 생성을 위한 프롬프트
+          const contentPrompt = `
+다음 키워드에 대한 SEO 최적화된 콘텐츠를 작성해주세요:
+
+키워드: ${keyword}
+콘텐츠 유형: ${contentType}
+작성 스타일: ${styleType}
+
+요구사항:
+1. 전체적으로 ${keyword}에 대한 자연스러운 정보를 제공해야 합니다.
+2. 마치 사람이 직접 작성한 것처럼 자연스러운 문체로 작성해주세요.
+3. 구글 SEO에 최적화된 콘텐츠여야 합니다.
+4. 키워드를 자연스럽게 통합하되 과도하게 사용하지 마세요.
+5. 전문적이면서도 읽기 쉬운 어조를 유지하세요.
+6. 글은 서론, 본론, 결론 구조를 가지고 있어야 합니다.
+7. 마크다운 형식으로 제목, 소제목, 단락을 구분해주세요.
+8. 글자 수는 최소 500자 이상이어야 합니다.
+${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게 본문에 통합해주세요:\n${anchorLinks.map(link => `   - 텍스트: ${link.text}, URL: ${link.url}`).join('\n')}` : ''}
+`;
+
+          // OpenAI API 호출 - 제목 생성
+          const headlinesResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: "gpt-4",
+              messages: [
+                {"role": "system", "content": "당신은 SEO 최적화된 콘텐츠를 생성하는 전문가입니다."},
+                {"role": "user", "content": headlinePrompt}
+              ],
+              temperature: 0.7,
+              max_tokens: 500
+            })
+          });
+          
+          // OpenAI API 호출 - 본문 생성
+          const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: "gpt-4",
+              messages: [
+                {"role": "system", "content": "당신은 SEO 최적화된 콘텐츠를 생성하는 전문가입니다. 사람이 직접 작성한 것 같은 자연스러운 글을 작성하세요."},
+                {"role": "user", "content": contentPrompt}
+              ],
+              temperature: 0.8,
+              max_tokens: 3000
+            })
+          });
+          
+          if (!headlinesResponse.ok || !contentResponse.ok) {
+            throw new Error("API 요청 중 오류가 발생했습니다.");
+          }
+          
+          const headlinesData = await headlinesResponse.json();
+          const contentData = await contentResponse.json();
+          
+          // 응답에서 제목과 본문 추출
+          const headlinesText = headlinesData.choices[0].message.content;
+          const contentText = contentData.choices[0].message.content;
+          
+          // 제목 목록 추출 (줄바꿈으로 구분된 제목들)
+          const extractedHeadlines = headlinesText.split('\n').filter(line => line.trim() !== '');
+          
+          // 결과 설정
+          setHeadlines(extractedHeadlines);
+          setResult(contentText);
+          setShowResult(true);
+          setIsLoading(false);
+          
+        } catch (apiError) {
+          console.error('GPT API 호출 중 오류:', apiError);
+          // API 오류 시 기본 템플릿으로 폴백
+          alert('AI 콘텐츠 생성에 실패했습니다. 기본 템플릿으로 생성합니다.');
+          // 일반 템플릿 생성 코드 실행
+          generateMockTemplateContent();
+        }
+      } else {
+        // 일반 회원용 템플릿 기반 콘텐츠
+        generateMockTemplateContent();
+      }
+    } catch (error) {
+      console.error('콘텐츠 생성 중 오류 발생:', error);
+      alert('콘텐츠 생성 중 오류가 발생했습니다.');
+      setIsLoading(false);
+    }
+  };
+  
+  // 템플릿 기반 콘텐츠 생성 (일반 회원용)
+  const generateMockTemplateContent = () => {
     if (!keyword.trim()) {
       alert('키워드를 입력해주세요.');
       return;
@@ -475,7 +595,7 @@ ${images.slice(3).map((img, index) =>
             
             // 일반 회원인 경우 제한 메시지 추가
             if (!isVip) {
-              mockContent += '\n\n... [더 긴 콘텐츠를 생성하려면 VIP 회원으로 업그레이드하세요] ...';
+              mockContent += '\n\n... [더 사람같이 쓴 콘텐츠를 생성하려면 VIP 회원으로 업그레이드하세요] ...';
             }
           }
           
@@ -595,7 +715,7 @@ ${images.slice(3).map((img, index) =>
             
             <div className="vip-payment-info">
               <h3>결제 정보</h3>
-              <p>아래 계좌로 19,900원을 입금하신 후, VIP 신청 버튼을 클릭해주세요.</p>
+              <p>아래 계좌로 29,900원을 입금하신 후, VIP 신청 버튼을 클릭해주세요.</p>
               <div className="account-info">
                 <div className="account-row">
                   <span className="account-label">은행명:</span>
