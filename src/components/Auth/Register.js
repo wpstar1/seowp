@@ -10,12 +10,12 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { register, currentUser } = useAuth();
+  const { register, login, currentUser } = useAuth();
   
   useEffect(() => {
-    // 이미 로그인한 경우 대시보드로 이동
+    // 이미 로그인한 경우 메인 페이지로 이동
     if (currentUser) {
-      navigate('/dashboard');
+      navigate('/');
     }
   }, [currentUser, navigate]);
 
@@ -33,20 +33,23 @@ const Register = () => {
     
     try {
       // 로그인 전에 기존 데이터 확인
-      const existingUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      console.log('회원가입 전 기존 사용자:', existingUsers);
+      console.log('회원가입 시도:', username);
       
-      // 로컬 인증 시스템으로 회원가입
-      const result = await register(username, password);
+      // 로컬 인증 시스템으로 회원가입 - confirmPassword도 전달
+      const result = await register(username, password, confirmPassword);
       
       if (result.success) {
-        // 회원가입 후 데이터 확인
-        const updatedUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-        console.log('회원가입 후 사용자 목록:', updatedUsers);
-        console.log('현재 로그인 사용자:', localStorage.getItem('smart_content_current_user'));
+        console.log('회원가입 성공:', username);
         
-        // 회원가입 성공, 대시보드로 바로 이동
-        navigate('/dashboard');
+        // 자동 로그인 시도
+        const loginResult = await login(username, password);
+        if (loginResult.success) {
+          // 회원가입 및 로그인 성공, 메인 화면으로 이동
+          navigate('/');
+        } else {
+          // 회원가입은 성공했지만 로그인 실패, 로그인 페이지로 이동
+          navigate('/login');
+        }
       } else {
         setError(result.error || '회원가입 중 오류가 발생했습니다');
       }

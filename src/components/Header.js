@@ -4,7 +4,9 @@ import { useAuth } from '../contexts/LocalAuthContext';
 import '../styles/Header.css';
 
 const Header = () => {
-  const { currentUser, signOut, isAdmin } = useAuth();
+  const { currentUser, signOut } = useAuth();
+  const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved');
+  const isAdmin = currentUser && currentUser.username === '1111'; 
   
   // 로그아웃 처리
   const handleLogout = () => {
@@ -15,14 +17,23 @@ const Header = () => {
   // VIP 신청 모달 표시 함수
   const handleVipRequest = () => {
     // App.js에서 정의된 모달을 열기 위해 커스텀 이벤트 발생
-    const vipRequestEvent = new CustomEvent('openVipModal');
-    window.dispatchEvent(vipRequestEvent);
+    if (currentUser) {
+      // 로그인한 사용자는 VIP 신청 모달 표시
+      const vipRequestEvent = new CustomEvent('openVipModal');
+      window.dispatchEvent(vipRequestEvent);
+    } else {
+      // 로그인하지 않은 사용자는 로그인 모달 표시
+      const loginRequestEvent = new CustomEvent('openLoginModal');
+      window.dispatchEvent(loginRequestEvent);
+    }
   };
   
   return (
     <header className="app-header">
       <div className="logo">
-        <Link to="/" className="logo-link">스마트 콘텐츠 크리에이터</Link>
+        <span className="logo-icon">🟣</span>
+        <Link to="/" className="logo-link">위프스타 Content Creator v5</Link>
+        <span className="logo-subtitle">모바일 AI 콘텐츠 생성기</span>
       </div>
       
       <nav className="header-nav">
@@ -30,50 +41,35 @@ const Header = () => {
           <div className="user-menu">
             <span className="username">{currentUser.username}</span>
             
-            {isAdmin && isAdmin() && (
-              <Link to="/admin-dashboard" className="admin-link">관리자 페이지</Link>
+            {isAdmin && (
+              <Link to="/admin" className="admin-link">관리자</Link>
             )}
             
-            {!isAdmin() && (
+            {isVip ? (
+              <span className="vip-badge">
+                <span className="vip-icon">⭐</span> 
+                VIP 회원
+              </span>
+            ) : (
               <button 
                 onClick={handleVipRequest} 
                 className="vip-btn"
-                style={{
-                  backgroundColor: '#6c5ce7', 
-                  color: 'white',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  marginRight: '10px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
               >
                 VIP 신청
               </button>
             )}
             
-            <button onClick={handleLogout} className="logout-btn">로그아웃</button>
+            <button 
+              onClick={handleLogout} 
+              className="logout-btn"
+            >
+              로그아웃
+            </button>
           </div>
         ) : (
           <div className="auth-buttons">
-            <Link to="/login" className="auth-btn login-btn" style={{ color: 'white', marginRight: '15px', fontWeight: 'bold' }}>로그인</Link>
-            <Link to="/register" className="auth-btn register-btn" style={{ color: 'white', marginRight: '15px', fontWeight: 'bold' }}>회원가입</Link>
-            <button 
-              onClick={handleVipRequest} 
-              className="vip-btn"
-              style={{
-                backgroundColor: '#6c5ce7', 
-                color: 'white',
-                border: 'none',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              VIP 신청
-            </button>
+            <Link to="/login" className="login-btn">로그인</Link>
+            <Link to="/register" className="register-btn">회원가입</Link>
           </div>
         )}
       </nav>

@@ -80,3 +80,59 @@
 .auth-buttons button:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
+
+.vip-badge {
+  display: flex;
+  align-items: center;
+  background-color: #ffc107;
+  color: #212121;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.vip-icon {
+  margin-right: 5px;
+  font-size: 16px;
+}
+
+.vip-btn {
+  background-color: #4caf50;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.vip-btn:hover {
+  background-color: #45a049;
+}
+
+.login-btn, .register-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+}
+
+.login-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.login-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.register-btn {
+  background-color: #4caf50;
+}
+
+.register-btn:hover {
+  background-color: #45a049;
+}

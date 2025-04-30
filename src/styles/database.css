@@ -1,0 +1,62 @@
+/* 데이터베이스 상태 표시를 위한 스타일 */
+.database-status {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+  color: #6c757d;
+  max-width: 300px;
+  opacity: 0.7;
+}
+
+.database-status:hover {
+  opacity: 1;
+}
+
+.database-status.connected {
+  background-color: #e8f5e9;
+  border-left: 4px solid #4caf50;
+  color: #2e7d32;
+}
+
+.database-status.error {
+  background-color: #fff8e1;
+  border-left: 4px solid #ff9800;
+  color: #e65100;
+}
+
+.db-status-message {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.db-fallback-message {
+  font-size: 12px;
+  margin-top: 5px;
+  color: #666;
+}
+
+.db-error-details {
+  font-size: 11px;
+  margin-top: 8px;
+  color: #d32f2f;
+  word-break: break-word;
+}
+
+.db-sync-message {
+  font-size: 12px;
+  color: #388e3c;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}

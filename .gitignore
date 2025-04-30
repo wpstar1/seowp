@@ -32,3 +32,5 @@ yarn-error.log*
 *.fixed
 *.new
 *.en
+
+.vercel

@@ -3,488 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>워프스타 콘텐츠 크리에이터 - 관리자 페이지</title>
+    <title>관리자 페이지 - Smart Content Creator</title>
     <style>
-        /* 기본 스타일 */
         body {
-            font-family: 'Noto Sans KR', Arial, sans-serif;
-            background-color: #f5f7fa;
+            font-family: 'Noto Sans KR', sans-serif;
             margin: 0;
-            padding: 0;
-            color: #333;
+            padding: 20px;
+            background-color: #f8f9fa;
         }
-        
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background-color: #8A4FFF;
-            color: white;
-            padding: 15px 0;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        
-        /* 대시보드 */
-        .dashboard {
             background-color: white;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            margin-bottom: 30px;
         }
-        
-        .stats {
+        h1, h2, h3 {
+            color: #333;
+        }
+        .header {
             display: flex;
             justify-content: space-between;
-            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
         }
-        
-        .stat-item {
-            flex: 1;
-            min-width: 200px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 10px;
-            text-align: center;
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
         }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #8A4FFF;
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
         }
-        
-        /* 사용자 관리 */
-        .user-management {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 30px;
+        .btn-secondary {
+            background-color: #2196F3;
+            color: white;
         }
-        
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ff9800;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 20px;
         }
-        
         th, td {
-            padding: 12px 15px;
+            padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
-        
         th {
             background-color: #f2f2f2;
             font-weight: 600;
         }
-        
         tr:hover {
-            background-color: #f5f5f5;
+            background-color: #f9f9f9;
         }
-        
-        /* 멤버십 상태 */
-        .vip {
-            color: #4CAF50;
-            font-weight: bold;
+        .loading-spinner {
+            display: inline-block;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
         }
-        
-        .pending {
-            color: #FFC107;
-            font-weight: bold;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        
-        .regular {
-            color: #607D8B;
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        
-        /* 버튼 스타일 */
-        .action-button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 5px;
-            transition: background-color 0.3s;
+        .stat-card {
+            flex: 1;
+            min-width: 200px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            text-align: center;
         }
-        
-        .delete-button {
-            background-color: #f44336;
-            color: white;
-        }
-        
-        .delete-button:hover {
-            background-color: #d32f2f;
-        }
-        
-        .vip-button {
-            background-color: #8A4FFF;
-            color: white;
-            font-weight: bold;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .vip-button:hover {
-            background-color: #7040E0;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 5px rgba(138, 79, 255, 0.3);
-        }
-        
-        /* 반응형 디자인 */
-        @media (max-width: 768px) {
-            .stat-item {
-                min-width: 100%;
-                margin: 5px 0;
-            }
-            
-            th, td {
-                padding: 8px 10px;
-                font-size: 14px;
-            }
-            
-            .action-button {
-                padding: 5px 10px;
-                font-size: 12px;
-            }
-        }
-        
-        /* 로딩 인디케이터 */
-        #loadingIndicator {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .stat-value {
             font-size: 24px;
             font-weight: bold;
-            color: #333;
+            margin: 10px 0;
         }
-        
-        /* 새로고침 버튼 */
-        .refresh-button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .stat-label {
+            color: #666;
+            font-size: 14px;
         }
-        
-        .refresh-button:hover {
-            background-color: #3e8e41;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 5px rgba(62, 142, 65, 0.3);
+        .user-action {
+            display: flex;
+            gap: 5px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-none {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .notification {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .notification-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .notification-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .notification-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .refresh-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        #lastRefreshTime {
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="admin-header">
-        <div class="admin-logo">
-            <span class="logo-dot">🟣</span>
-            <span>워프스타 Content Creator</span>
+    <div class="container">
+        <div class="header">
+            <h1>관리자 대시보드</h1>
+            <div>
+                <button id="refreshButton" class="btn btn-secondary">
+                    <span id="refreshSpinner" class="loading-spinner" style="display: none;"></span>
+                    사용자 목록 새로고침
+                </button>
+                <button id="backButton" class="btn btn-warning" onclick="goBack()">뒤로 가기</button>
+            </div>
         </div>
-        <button class="back-button" onclick="goBack()">메인으로 돌아가기</button>
-    </div>
-
-    <div class="admin-container">
-        <h1 class="admin-title">관리자 대시보드</h1>
         
-        <div id="messageContainer"></div>
-
-        <div class="admin-card">
-            <h2>사용자 관리</h2>
-            <table class="user-list" id="userTable">
+        <div id="notification" style="display: none;" class="notification"></div>
+        
+        <!-- 통계 정보 섹션 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">총 사용자 수</div>
+                <div id="totalUsers" class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">VIP 사용자 수</div>
+                <div id="vipUsers" class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">승인 대기 VIP 요청</div>
+                <div id="pendingVipRequests" class="stat-value">0</div>
+            </div>
+        </div>
+        
+        <h2>사용자 목록</h2>
+        <div id="userTableContainer">
+            <div id="loadingMessage">
+                <span class="loading-spinner"></span> 사용자 목록 로딩 중...
+            </div>
+            <table id="userTable" style="display: none;">
                 <thead>
                     <tr>
-                        <th>아이디</th>
+                        <th>사용자명</th>
+                        <th>멤버십 유형</th>
+                        <th>VIP 상태</th>
+                        <th>입금자명</th>
+                        <th>멤버십 만료일</th>
                         <th>가입일</th>
-                        <th>멤버십 상태</th>
-                        <th>VIP 만료일</th>
-                        <th>상태</th>
                         <th>액션</th>
                     </tr>
                 </thead>
                 <tbody id="userTableBody">
-                    <!-- 사용자 목록이 JavaScript로 여기에 로드됩니다 -->
+                    <!-- 사용자 목록이 여기에 동적으로 추가됩니다 -->
                 </tbody>
             </table>
-        </div>
-
-        <div class="admin-card">
-            <h2>통계</h2>
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
-                <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>총 사용자:</strong> <span id="totalUsers">0</span>
-                </div>
-                <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>VIP 사용자:</strong> <span id="vipUsers">0</span>
-                </div>
-                <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>오늘 가입한 사용자:</strong> <span id="todayNewUsers">0</span>
-                </div>
+            <div id="noUsersMessage" style="display: none;">
+                등록된 사용자가 없습니다.
             </div>
+        </div>
+        
+        <div class="refresh-info">
+            마지막 새로고침: <span id="lastRefreshTime">-</span>
+            <br>
+            (사용자 목록은 30초마다 자동으로 새로고침됩니다)
         </div>
     </div>
 
-    <div id="loadingIndicator">로딩 중...</div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 아래의 코드는 현재 사용자가 관리자인지 확인합니다
-            if (localStorage.getItem('smart_content_current_user') !== '1111') {
-                alert('관리자만 접근할 수 있습니다.');
-                window.location.href = '/';
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            // 관리자 검증
+            const isAdmin = checkAdminStatus();
+            if (!isAdmin) {
+                showNotification('관리자 권한이 없습니다. 로그인 페이지로 이동합니다.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
                 return;
             }
             
-            // 초기 사용자 목록 가져오기
+            // 초기 데이터 로드
             fetchUsers();
             
-            // 30초마다 사용자 목록을 자동으로 갱신합니다
-            setInterval(fetchUsers, 30000);
+            // 새로고침 버튼에 이벤트 리스너 추가
+            const refreshButton = document.getElementById('refreshButton');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function() {
+                    fetchUsers();
+                });
+            }
             
-            // 새로고침 버튼 추가
-            const refreshButton = document.createElement('button');
-            refreshButton.innerText = '목록 새로고침';
-            refreshButton.className = 'refresh-button';
-            refreshButton.onclick = fetchUsers;
-            document.querySelector('.user-management h2').after(refreshButton);
+            // 자동 새로고침 설정 (30초마다)
+            setInterval(fetchUsers, 30000);
         });
         
-        // 사용자 목록 가져오기 함수
-        async function fetchUsers() {
+        // 뒤로 가기 함수
+        function goBack() {
+            window.history.back();
+        }
+        
+        // 관리자 상태 확인
+        function checkAdminStatus() {
             try {
-                console.log('관리자 페이지: 사용자 목록 가져오기 시도');
-                document.getElementById('loadingIndicator').style.display = 'block';
+                const users = JSON.parse(localStorage.getItem('users')) || [];
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
                 
-                // API에서 사용자 목록 요청 (캐시 방지를 위한 timestamp 추가)
-                const timestamp = new Date().getTime();
-                const response = await fetch(`/api/admin?adminUsername=1111&t=${timestamp}`);
+                if (!currentUser) return false;
                 
-                // API 응답 처리
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('API 응답:', data);
-                    
-                    if (data.success) {
-                        // API에서 가져온 사용자 목록 표시
-                        displayUsers(data.users || []);
-                        
-                        // 통계 업데이트
-                        updateStats(data.users || []);
-                        
-                        // 성공 메시지 표시
-                        showMessage('success', `${data.users.length}명의 사용자 데이터를 성공적으로 불러왔습니다.`);
-                    } else {
-                        console.error('API 오류:', data.message);
-                        showMessage('error', `API 오류: ${data.message}`);
-                        
-                        // API에서 오류 발생 시 로컬 스토리지의 데이터 사용
-                        fallbackToLocalStorage();
-                    }
-                } else {
-                    const errorText = await response.text();
-                    console.error('API 요청 실패:', response.status, errorText);
-                    showMessage('error', `API 요청 실패 (${response.status}): ${errorText}`);
-                    
-                    // API 요청 실패 시 로컬 스토리지의 데이터 사용
-                    fallbackToLocalStorage();
-                }
+                // 관리자 계정 확인 (username이 '1111'인 경우 관리자로 간주)
+                return currentUser.username === '1111';
             } catch (error) {
-                console.error('사용자 목록 가져오기 오류:', error);
-                showMessage('error', `네트워크 오류: ${error.message}`);
-                
-                // 네트워크 오류 등의 경우 로컬 스토리지의 데이터 사용
-                fallbackToLocalStorage();
-            } finally {
-                document.getElementById('loadingIndicator').style.display = 'none';
+                console.error('관리자 상태 확인 중 오류:', error);
+                return false;
             }
         }
         
-        // 로컬 스토리지에서 사용자 목록 가져오기 (폴백)
-        function fallbackToLocalStorage() {
+        // 사용자 목록 가져오기
+        async function fetchUsers() {
+            showLoadingState();
+            
             try {
-                console.log('로컬 스토리지에서 사용자 목록 가져오기');
+                const response = await fetch('/api/admin?adminUsername=1111', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'admin-token'
+                    }
+                });
+                
+                // 응답 상태 확인
+                if (!response.ok) {
+                    throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
+                }
+                
+                // 응답 형식 확인 (JSON 또는 텍스트)
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // JSON이 아닌 경우 텍스트로 처리하고 오류 표시
+                    const text = await response.text();
+                    console.error('API가 JSON이 아닌 응답을 반환했습니다:', text.substring(0, 100) + '...');
+                    throw new Error('API가 JSON이 아닌 응답을 반환했습니다');
+                }
+                
+                // API 응답에서 사용자 목록 추출
+                const apiUsers = data.users || [];
                 
                 // 로컬 스토리지에서 사용자 목록 가져오기
-                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                
-                if (users.length === 0) {
-                    showMessage('warning', '저장된 사용자가 없습니다. 회원가입 페이지에서 새 사용자를 등록하세요.');
-                } else {
-                    // 사용자 목록 표시
-                    displayUsers(users);
-                    
-                    // 통계 업데이트
-                    updateStats(users);
-                    
-                    showMessage('info', `데이터베이스 연결 실패. 로컬 스토리지에서 ${users.length}명의 사용자를 불러왔습니다.`);
+                let localUsers = [];
+                try {
+                    localUsers = JSON.parse(localStorage.getItem('users')) || [];
+                } catch (localError) {
+                    console.error('로컬 스토리지 데이터 처리 중 오류:', localError);
                 }
-            } catch (error) {
-                console.error('로컬 스토리지 접근 오류:', error);
-                showMessage('error', `로컬 스토리지 접근 오류: ${error.message}`);
                 
-                // 빈 목록 표시
-                displayUsers([]);
-                updateStats([]);
+                // 모든 사용자 목록 병합 (중복 제거)
+                const allUsers = mergeDeduplicate(apiUsers, localUsers);
+                
+                // 테이블 업데이트
+                updateUserTable(allUsers);
+                
+                // 통계 업데이트
+                updateStats(allUsers, data.pendingVipRequests || 0);
+                
+                // 새로고침 시간 업데이트
+                updateRefreshTime();
+                
+                // 성공 메시지 표시
+                showNotification(`${allUsers.length}명의 사용자 데이터를 성공적으로 가져왔습니다.`, 'success');
+            } catch (error) {
+                console.error('사용자 목록 가져오기 오류:', error);
+                
+                // 로컬 스토리지 사용자 목록만 표시 (fallback)
+                try {
+                    const localUsers = JSON.parse(localStorage.getItem('users')) || [];
+                    updateUserTable(localUsers);
+                    updateStats(localUsers, 0);
+                    showNotification('API 연결 실패: 로컬 사용자 정보만 표시합니다.', 'warning');
+                } catch (localError) {
+                    console.error('로컬 스토리지 데이터 처리 중 오류:', localError);
+                    showNotification('사용자 정보를 가져올 수 없습니다.', 'error');
+                }
+            } finally {
+                hideLoadingState();
             }
         }
         
-        // 사용자 목록 표시 함수
-        function displayUsers(users) {
-            const userTableBody = document.getElementById('userTableBody');
-            userTableBody.innerHTML = '';
+        // 사용자 목록 병합 및 중복 제거
+        function mergeDeduplicate(apiUsers, localUsers) {
+            const usernameMap = new Map();
+            
+            // API 사용자 추가
+            apiUsers.forEach(user => {
+                usernameMap.set(user.username, user);
+            });
+            
+            // 로컬 사용자 추가 (이미 있는 경우 API 사용자 우선)
+            localUsers.forEach(user => {
+                if (!usernameMap.has(user.username)) {
+                    usernameMap.set(user.username, user);
+                }
+            });
+            
+            return Array.from(usernameMap.values());
+        }
+        
+        // 사용자 테이블 업데이트
+        function updateUserTable(users) {
+            const tableBody = document.getElementById('userTableBody');
+            const table = document.getElementById('userTable');
+            const noUsersMessage = document.getElementById('noUsersMessage');
+            
+            // 테이블 비우기
+            tableBody.innerHTML = '';
             
             if (users.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `<td colspan="6" style="text-align: center; padding: 20px;">등록된 사용자가 없습니다.</td>`;
-                userTableBody.appendChild(emptyRow);
+                table.style.display = 'none';
+                noUsersMessage.style.display = 'block';
                 return;
             }
             
+            // 테이블 표시
+            table.style.display = 'table';
+            noUsersMessage.style.display = 'none';
+            
+            // 사용자 행 추가
             users.forEach(user => {
-                const row = document.createElement('tr');
-                
-                // VIP 상태 결정 (membershipType과 vipStatus 모두 확인)
-                const isVip = (user.membershipType === 'vip' || user.membership_type === 'vip') && 
-                              (user.vipStatus === 'approved' || user.vip_status === 'approved');
-                const isPending = user.vipStatus === 'pending' || user.vip_status === 'pending';
-                
-                // 멤버십 만료일 포맷팅
-                let expiryDate = user.membershipExpiry || user.membership_expiry;
-                expiryDate = expiryDate 
-                    ? new Date(expiryDate).toLocaleDateString('ko-KR')
-                    : '없음';
-                    
-                // VIP가 아니거나 만료된 경우
-                if (!isVip) {
-                    expiryDate = '없음';
-                }
-                
-                // 생성일 포맷팅
-                const createdDate = user.createdAt || user.created_at;
-                const formattedDate = createdDate 
-                    ? new Date(createdDate).toLocaleDateString('ko-KR')
-                    : '알 수 없음';
-                
-                // VIP 상태에 따른 클래스 및 텍스트
-                let statusClass = '';
-                let statusText = '';
-                
-                if (isVip) {
-                    statusClass = 'vip';
-                    statusText = 'VIP';
-                } else if (isPending) {
-                    statusClass = 'pending';
-                    statusText = '승인 대기중';
-                } else {
-                    statusClass = 'regular';
-                    statusText = '일반';
-                }
+                const row = tableBody.insertRow();
                 
                 // 사용자명
-                const username = user.username;
+                const usernameCell = row.insertCell();
+                usernameCell.textContent = user.username;
                 
-                // 행 내용 설정
-                row.innerHTML = `
-                    <td>${username}</td>
-                    <td>${formattedDate}</td>
-                    <td class="${statusClass}">${statusText}</td>
-                    <td>${expiryDate}</td>
-                    <td>${user.depositName || user.deposit_name || '-'}</td>
-                    <td>
-                        <button class="vip-button" onclick="approveVip('${username}', '${user.depositName || user.deposit_name || username}')">VIP 승인</button>
-                    </td>
-                `;
+                // 멤버십 유형
+                const membershipTypeCell = row.insertCell();
+                membershipTypeCell.textContent = user.membershipType || 'regular';
                 
-                userTableBody.appendChild(row);
+                // VIP 상태
+                const vipStatusCell = row.insertCell();
+                const vipStatus = user.vipStatus || 'none';
+                const statusBadge = document.createElement('span');
+                statusBadge.className = `status-badge status-${vipStatus}`;
+                statusBadge.textContent = getVipStatusText(vipStatus);
+                vipStatusCell.appendChild(statusBadge);
+                
+                // 입금자명
+                const depositNameCell = row.insertCell();
+                depositNameCell.textContent = user.depositName || '-';
+                
+                // 멤버십 만료일
+                const expiryCell = row.insertCell();
+                expiryCell.textContent = user.membershipExpiry ? formatDate(user.membershipExpiry) : '-';
+                
+                // 가입일
+                const createdAtCell = row.insertCell();
+                createdAtCell.textContent = user.createdAt ? formatDate(user.createdAt) : '-';
+                
+                // 액션 버튼
+                const actionsCell = row.insertCell();
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'user-action';
+                
+                // VIP 승인 버튼 (pending 상태인 경우에만 표시)
+                if (vipStatus === 'pending') {
+                    const approveButton = document.createElement('button');
+                    approveButton.className = 'btn btn-primary';
+                    approveButton.textContent = 'VIP 승인';
+                    approveButton.onclick = () => approveVip(user.username);
+                    actionsDiv.appendChild(approveButton);
+                }
+                
+                actionsCell.appendChild(actionsDiv);
             });
         }
         
-        // VIP 수동 승인 함수
-        async function approveVip(username, depositName) {
-            if (!confirm(`${username} 사용자를 VIP로 승인하시겠습니까?`)) {
-                return;
-            }
+        // 통계 업데이트
+        function updateStats(users, pendingVipRequests) {
+            const totalUsers = users.length;
+            const vipUsers = users.filter(user => 
+                (user.vipStatus === 'approved' || user.membershipType === 'vip')
+            ).length;
             
+            document.getElementById('totalUsers').textContent = totalUsers;
+            document.getElementById('vipUsers').textContent = vipUsers;
+            document.getElementById('pendingVipRequests').textContent = pendingVipRequests;
+        }
+        
+        // VIP 상태 텍스트 반환
+        function getVipStatusText(status) {
+            switch (status) {
+                case 'pending': return '승인 대기';
+                case 'approved': return '승인됨';
+                case 'rejected': return '거부됨';
+                case 'none':
+                default: return '없음';
+            }
+        }
+        
+        // VIP 승인 처리
+        async function approveVip(username) {
             try {
-                document.getElementById('loadingIndicator').style.display = 'block';
-                const apiUrl = `/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=approve`;
+                showNotification('VIP 승인 처리 중...', 'warning');
                 
-                console.log('VIP 승인 API 호출:', apiUrl);
+                const response = await fetch('/api/approveVip', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'admin-token'
+                    },
+                    body: JSON.stringify({ username })
+                });
                 
-                // API 호출
-                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`API 오류: ${response.status}`);
+                }
                 
-                if (response.ok) {
-                    const responseText = await response.text();
-                    console.log('VIP 승인 성공:', responseText);
-                    
-                    showMessage('success', `${username} 사용자가 성공적으로 VIP로 승인되었습니다.`);
-                    
-                    // 사용자 목록 새로고침
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`${username} 사용자의 VIP 승인이 완료되었습니다.`, 'success');
+                    // 로컬 스토리지도 업데이트
+                    updateLocalStorage(username);
+                    // 목록 새로고침
                     fetchUsers();
                 } else {
-                    const errorText = await response.text();
-                    console.error('승인 처리 중 API 오류:', errorText);
-                    
-                    showMessage('error', `승인 처리 중 오류가 발생했습니다: ${errorText}`);
+                    throw new Error(data.message || 'VIP 승인 처리에 실패했습니다.');
                 }
             } catch (error) {
-                console.error('VIP 승인 처리 중 오류:', error);
-                showMessage('error', `VIP 승인 처리 중 네트워크 오류가 발생했습니다: ${error.message}`);
-            } finally {
-                document.getElementById('loadingIndicator').style.display = 'none';
+                console.error('VIP 승인 처리 오류:', error);
+                showNotification(`VIP 승인 처리에 실패했습니다: ${error.message}`, 'error');
+                
+                // API가 실패해도 로컬 스토리지는 업데이트
+                updateLocalStorage(username);
+                fetchUsers();
             }
         }
         
-        // 통계 업데이트 함수
-        function updateStats(users) {
-            // 전체 사용자 수
-            document.getElementById('totalUsers').textContent = users.length;
-            
-            // VIP 사용자 수 (membershipType과 vipStatus 모두 확인)
-            const vipCount = users.filter(user => 
-                (user.membershipType === 'vip' || user.membership_type === 'vip') && 
-                (user.vipStatus === 'approved' || user.vip_status === 'approved')
-            ).length;
-            document.getElementById('vipUsers').textContent = vipCount;
-            
-            // 오늘 가입한 사용자 수
-            const today = new Date().toISOString().split('T')[0];
-            const todayUsers = users.filter(user => {
-                const createdAt = user.createdAt || user.created_at;
-                if (!createdAt) return false;
-                return createdAt.split('T')[0] === today;
-            }).length;
-            document.getElementById('todayNewUsers').textContent = todayUsers;
+        // 로컬 스토리지 사용자 정보 업데이트
+        function updateLocalStorage(username) {
+            try {
+                const users = JSON.parse(localStorage.getItem('users')) || [];
+                const updatedUsers = users.map(user => {
+                    if (user.username === username) {
+                        // VIP 승인 처리
+                        user.vipStatus = 'approved';
+                        user.membershipType = 'vip';
+                        
+                        // 만료일 설정 (30일)
+                        const now = new Date();
+                        const expiry = new Date(now);
+                        expiry.setDate(now.getDate() + 30);
+                        user.membershipExpiry = expiry.toISOString();
+                    }
+                    return user;
+                });
+                
+                localStorage.setItem('users', JSON.stringify(updatedUsers));
+            } catch (error) {
+                console.error('로컬 스토리지 업데이트 오류:', error);
+            }
         }
         
-        // 메시지 표시 함수
-        function showMessage(type, text) {
-            const messageContainer = document.getElementById('messageContainer');
-            const messageElement = document.createElement('div');
-            messageElement.className = `message ${type}`;
-            messageElement.textContent = text;
+        // 날짜 형식화
+        function formatDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    return dateString; // 유효하지 않은 날짜는 원본 반환
+                }
+                return date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                console.error('날짜 형식화 오류:', error);
+                return dateString;
+            }
+        }
+        
+        // 로딩 상태 표시
+        function showLoadingState() {
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('userTable').style.display = 'none';
+            document.getElementById('noUsersMessage').style.display = 'none';
+            document.getElementById('refreshSpinner').style.display = 'inline-block';
+        }
+        
+        // 로딩 상태 숨김
+        function hideLoadingState() {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('refreshSpinner').style.display = 'none';
+        }
+        
+        // 알림 표시
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification notification-${type}`;
+            notification.style.display = 'block';
             
-            // 기존 메시지 제거
-            messageContainer.innerHTML = '';
-            messageContainer.appendChild(messageElement);
-            
-            // 3초 후 메시지 자동 삭제
+            // 3초 후 알림 숨김
             setTimeout(() => {
-                messageElement.style.opacity = '0';
-                setTimeout(() => messageElement.remove(), 500);
+                notification.style.display = 'none';
             }, 3000);
+        }
+        
+        // 새로고침 시간 업데이트
+        function updateRefreshTime() {
+            const now = new Date();
+            const timeString = now.toLocaleDateString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('lastRefreshTime').textContent = timeString;
         }
     </script>
 </body>

@@ -1,68 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import '../styles/database.css';
+import { connectDB } from '../lib/mongodb';
 
+/**
+ * 데이터베이스 초기화 컴포넌트
+ * 애플리케이션이 시작될 때 데이터베이스 연결을 초기화하고
+ * 연결 상태에 따라 UI를 표시합니다.
+ */
 const DatabaseInitializer = () => {
-  const [status, setStatus] = useState('준비 중...');
-
+  const [status, setStatus] = useState('checking');
+  const [message, setMessage] = useState('데이터베이스 연결 확인 중...');
+  
+  // 데이터베이스 연결 상태 확인
   useEffect(() => {
     const checkDatabaseConnection = async () => {
       try {
-        // 서버/API 연결 상태 확인
-        setStatus('데이터베이스 연결 테스트 중...');
+        setStatus('checking');
+        setMessage('MongoDB 연결 확인 중...');
         
-        // 헬스체크 API 요청 - 간단한 GET 요청으로 서버 상태 확인
-        const response = await axios.get('/api/auth', {
-          timeout: 5000 // 5초 타임아웃
-        });
+        // MongoDB 연결 시도
+        const connected = await connectDB();
         
-        // 연결 성공
-        if (response.status >= 200 && response.status < 300) {
-          setStatus('데이터베이스 연결됨 ');
-          console.log('서버 및 데이터베이스 연결 성공');
+        if (connected) {
+          setStatus('connected');
+          setMessage('MongoDB 연결 성공! 서비스를 이용할 수 있습니다.');
           
-          // 로컬 스토리지 데이터 마이그레이션 시도
-          migrateLocalStorageData();
+          // 로컬 환경에서 API 테스트 (실제 서비스에서는 사용하지 않음)
+          try {
+            const response = await axios.get('/api/health-check');
+            console.log('API 상태 확인:', response.data);
+          } catch (apiError) {
+            console.log('API 상태 확인 중 오류 (무시 가능):', apiError.message);
+          }
         } else {
-          setStatus('데이터베이스 연결 실패 - 로컬 스토리지 사용');
-          console.warn('데이터베이스 연결 테스트 실패. 로컬 스토리지를 사용합니다.');
+          setStatus('error');
+          setMessage('MongoDB 연결 실패. 로컬 스토리지 모드로 작동합니다.');
         }
       } catch (error) {
-        setStatus('데이터베이스 연결 실패 - 로컬 스토리지 사용');
-        console.error('데이터베이스 연결 오류:', error);
+        console.error('데이터베이스 연결 확인 중 오류:', error);
+        setStatus('error');
+        setMessage('MongoDB 연결 오류. 로컬 스토리지 모드로 작동합니다.');
       }
     };
-
-    // 로컬 스토리지 데이터를 데이터베이스로 마이그레이션
-    const migrateLocalStorageData = async () => {
-      try {
-        // 로컬 스토리지에서 사용자 데이터 로드
-        const usersData = localStorage.getItem('smart_content_users');
-        if (!usersData) return;
-        
-        const users = JSON.parse(usersData);
-        if (!users.length) return;
-        
-        setStatus('로컬 데이터 마이그레이션 중...');
-        
-        // 향후 구현: 실제 마이그레이션 로직
-        // 여기서는 간단히 로컬 스토리지의 데이터를 유지합니다
-        // 실제로는 서버에 API 요청을 보내 데이터를 마이그레이션해야 합니다
-        
-        setStatus('로컬 데이터 마이그레이션 완료 ');
-      } catch (error) {
-        console.error('데이터 마이그레이션 중 오류:', error);
-        setStatus('데이터 마이그레이션 실패 ');
-      }
-    };
-
-    // 초기화 실행
+    
     checkDatabaseConnection();
   }, []);
-
+  
+  // 상태별 클래스 설정
+  const getStatusClass = () => {
+    switch (status) {
+      case 'connected':
+        return 'database-status-success';
+      case 'error':
+        return 'database-status-error';
+      default:
+        return 'database-status-checking';
+    }
+  };
+  
   return (
-    <div className="database-status">
-      <small>{status}</small>
+    <div className={`database-status ${getStatusClass()}`}>
+      <p>{message}</p>
     </div>
   );
 };

@@ -14,9 +14,9 @@ const Login = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // 이미 로그인한 경우 대시보드로 이동
+    // 이미 로그인한 경우 메인 페이지로 이동
     if (currentUser) {
-      navigate('/dashboard');
+      navigate('/');
     }
     
     // location state에서 메시지 가져오기
@@ -35,8 +35,8 @@ const Login = () => {
       const result = await login(username, password);
       
       if (result.success) {
-        // 로그인 성공, 대시보드로 이동
-        navigate('/dashboard');
+        // 로그인 성공, 메인 페이지로 이동
+        navigate('/');
       } else {
         setError(result.error || '로그인 중 오류가 발생했습니다');
       }

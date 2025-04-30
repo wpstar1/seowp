@@ -13,6 +13,7 @@
     "firebase": "^11.6.1",
     "idb": "^8.0.2",
     "moment": "^2.30.1",
+    "mongoose": "^8.14.1",
     "node-telegram-bot-api": "^0.66.0",
     "pg": "^8.15.6",
     "react": "^18.2.0",
@@ -22,7 +23,9 @@
     "react-toastify": "^11.0.5"
   },
   "scripts": {
+    "dev": "vercel dev",
     "start": "react-scripts start",
+    "start:prod": "serve -s build",
     "build": "prisma generate && react-scripts build",
     "postinstall": "prisma generate",
     "prisma:migrate": "prisma migrate deploy"

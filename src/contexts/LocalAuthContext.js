@@ -5,7 +5,8 @@ import {
   createUser, 
   authenticateUser, 
   updateVipStatus,
-  getAllUsers
+  getAllUsers,
+  checkVipStatus
 } from '../services/dbService';
 
 // 인증 컨텍스트 생성
@@ -56,8 +57,9 @@ export const AuthProvider = ({ children }) => {
         const user = result.data;
         
         // VIP 상태 확인 및 설정
-        let isVip = user.vipstatus === 'approved';
-        let isAdmin = user.isadmin;
+        const vipResult = await checkVipStatus(username);
+        const isVip = vipResult.success && vipResult.isVip;
+        const isAdmin = user.isadmin || username === '1111';
         
         console.log('사용자 로드 성공:', user.username);
         setCurrentUser({
@@ -86,7 +88,7 @@ export const AuthProvider = ({ children }) => {
       
       if (!result.success) {
         setError(result.error || '로그인에 실패했습니다.');
-        return false;
+        return { success: false, error: result.error || '로그인에 실패했습니다.' };
       }
       
       const user = result.data;
@@ -100,8 +102,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('smart_content_login_expiry', expiryDate.getTime().toString());
       
       // VIP 상태 확인
-      const isVip = user.vipstatus === 'approved';
-      const isAdmin = user.isadmin;
+      const vipResult = await checkVipStatus(username);
+      const isVip = vipResult.success && vipResult.isVip;
+      const isAdmin = user.isadmin || username === '1111';
       
       setCurrentUser({
         ...user, 
@@ -110,11 +113,11 @@ export const AuthProvider = ({ children }) => {
       });
       
       setError('');
-      return true;
+      return { success: true, user };
     } catch (error) {
       console.error('로그인 중 오류 발생:', error);
       setError('로그인 중 오류가 발생했습니다.');
-      return false;
+      return { success: false, error: '로그인 중 오류가 발생했습니다.' };
     } finally {
       setLoading(false);
     }
@@ -126,9 +129,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       // 비밀번호 확인
-      if (password !== confirmPassword) {
+      if (confirmPassword && password !== confirmPassword) {
         setError('비밀번호가 일치하지 않습니다.');
-        return false;
+        return { success: false, error: '비밀번호가 일치하지 않습니다.' };
       }
       
       // 데이터베이스에 사용자 생성
@@ -139,15 +142,15 @@ export const AuthProvider = ({ children }) => {
       
       if (!result.success) {
         setError(result.error || '회원가입에 실패했습니다.');
-        return false;
+        return { success: false, error: result.error || '회원가입에 실패했습니다.' };
       }
       
       setError('');
-      return true;
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('회원가입 중 오류 발생:', error);
       setError('회원가입 중 오류가 발생했습니다.');
-      return false;
+      return { success: false, error: '회원가입 중 오류가 발생했습니다.' };
     } finally {
       setLoading(false);
     }
@@ -162,94 +165,86 @@ export const AuthProvider = ({ children }) => {
   };
 
   // VIP 업그레이드 요청
-  const requestVipUpgrade = async () => {
+  const requestVipUpgrade = async (username) => {
     try {
       if (!currentUser) {
         setError('로그인이 필요합니다.');
-        return false;
+        return { success: false, error: '로그인이 필요합니다.' };
       }
       
-      const now = new Date();
-      const oneYearLater = new Date();
-      oneYearLater.setFullYear(now.getFullYear() + 1);
-      
       // 데이터베이스에 VIP 요청 상태 업데이트
-      const result = await updateVipStatus(
-        currentUser.username,
-        'vip',
-        'pending',
-        oneYearLater.toISOString()
-      );
+      const result = await updateVipStatus(username, 'pending');
       
       if (!result.success) {
         setError(result.error || 'VIP 업그레이드 요청에 실패했습니다.');
-        return false;
+        return { success: false, error: result.error || 'VIP 업그레이드 요청에 실패했습니다.' };
       }
       
       // 현재 사용자 상태 업데이트
       setCurrentUser({
         ...currentUser,
-        membershiptype: 'vip',
-        vipstatus: 'pending'
+        vipStatus: 'pending',
+        updatedAt: new Date()
       });
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('VIP 업그레이드 요청 중 오류 발생:', error);
       setError('VIP 업그레이드 요청 중 오류가 발생했습니다.');
-      return false;
+      return { success: false, error: '서버 오류가 발생했습니다.' };
     }
   };
 
   // VIP 승인/거부 (관리자용)
   const manageVipRequest = async (username, approve) => {
     try {
-      if (!currentUser || !currentUser.isAdmin) {
+      if (!currentUser || !(currentUser.isAdmin || currentUser.username === '1111')) {
         setError('관리자 권한이 필요합니다.');
-        return false;
+        return { success: false, error: '관리자 권한이 필요합니다.' };
       }
       
       // 데이터베이스에 VIP 상태 업데이트
-      const result = await updateVipStatus(
-        username,
-        'vip',
-        approve ? 'approved' : 'rejected',
-        approve ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null
-      );
+      const status = approve ? 'approved' : 'rejected';
+      
+      // VIP 승인 시 만료일 설정 (현재로부터 30일)
+      const expiryDate = approve ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null;
+      const result = await updateVipStatus(username, status, expiryDate);
       
       if (!result.success) {
         setError(result.error || 'VIP 상태 업데이트에 실패했습니다.');
-        return false;
+        return { success: false, error: result.error || 'VIP 상태 업데이트에 실패했습니다.' };
       }
       
       // 현재 사용자가 해당 사용자라면 상태 업데이트
       if (currentUser.username === username) {
         setCurrentUser({
           ...currentUser,
-          membershiptype: 'vip',
-          vipstatus: approve ? 'approved' : 'rejected',
-          isVip: approve
+          membershipType: approve ? 'vip' : 'regular',
+          vipStatus: status,
+          vipExpiryDate: expiryDate,
+          updatedAt: new Date()
         });
       }
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('VIP 상태 관리 중 오류 발생:', error);
       setError('VIP 상태 관리 중 오류가 발생했습니다.');
-      return false;
+      return { success: false, error: '서버 오류가 발생했습니다.' };
     }
   };
 
   // 사용자 목록 조회 (관리자용)
   const getUsersList = async () => {
     try {
-      if (!currentUser || !currentUser.isAdmin) {
+      if (!currentUser || !(currentUser.isAdmin || currentUser.username === '1111')) {
         setError('관리자 권한이 필요합니다.');
         return { success: false, error: '관리자 권한이 필요합니다.' };
       }
       
       // 데이터베이스에서 사용자 목록 조회
-      return await getAllUsers();
+      const result = await getAllUsers();
+      return result;
     } catch (error) {
       console.error('사용자 목록 조회 중 오류 발생:', error);
       setError('사용자 목록 조회 중 오류가 발생했습니다.');
@@ -262,12 +257,14 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     login,
     logout,
+    signOut: logout, // signOut 함수명으로도 접근 가능하도록 추가
     register,
     loading,
     error,
     requestVipUpgrade,
     manageVipRequest,
-    getUsersList
+    getUsersList,
+    setError
   };
 
   return (

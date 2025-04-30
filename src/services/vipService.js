@@ -127,7 +127,7 @@ export function generateVipApprovalLink(username, depositName) {
   // 새로운 API 엔드포인트 사용
   const baseUrl = window.location.hostname === 'localhost' 
     ? `http://localhost:${window.location.port || 3000}`
-    : 'https://seo-beige.vercel.app';
+    : `https://${window.location.hostname}`;
   
   // DirectApprove API로 변경
   return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=approve`;
@@ -137,7 +137,7 @@ export function generateVipApprovalLink(username, depositName) {
 export function generateVipRejectionLink(username, depositName) {
   const baseUrl = window.location.hostname === 'localhost' 
     ? `http://localhost:${window.location.port || 3000}`
-    : 'https://seo-beige.vercel.app';
+    : `https://${window.location.hostname}`;
   
   // DirectApprove API로 변경
   return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=reject`;
