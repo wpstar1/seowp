@@ -121,3 +121,24 @@ export const updateVipStatus = async (username, isVip, vipStatus = 'approved', e
     return { success: false, error: error.message || '상태 업데이트 중 오류가 발생했습니다.' };
   }
 };
+
+// VIP 승인 링크 생성
+export function generateVipApprovalLink(username, depositName) {
+  // 새로운 API 엔드포인트 사용
+  const baseUrl = window.location.hostname === 'localhost' 
+    ? `http://localhost:${window.location.port || 3000}`
+    : 'https://seo-beige.vercel.app';
+  
+  // DirectApprove API로 변경
+  return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=approve`;
+}
+
+// VIP 거부 링크 생성
+export function generateVipRejectionLink(username, depositName) {
+  const baseUrl = window.location.hostname === 'localhost' 
+    ? `http://localhost:${window.location.port || 3000}`
+    : 'https://seo-beige.vercel.app';
+  
+  // DirectApprove API로 변경
+  return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=reject`;
+}
