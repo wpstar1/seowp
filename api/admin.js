@@ -23,6 +23,8 @@ module.exports = async (req, res) => {
     
     // 사용자 목록 조회 (GET)
     if (req.method === 'GET') {
+      console.log('관리자 API: 모든 사용자 목록 조회 시도');
+      
       // 전체 사용자 목록 조회 
       const allUsers = await prisma.user.findMany({
         select: {
@@ -35,6 +37,8 @@ module.exports = async (req, res) => {
         }
       });
       
+      console.log(`관리자 API: ${allUsers.length}명의 사용자 목록 조회 성공:`, allUsers);
+      
       // 대기 중인 VIP 요청 조회
       const pendingUsers = await prisma.user.findMany({
         where: { vipStatus: 'pending' },
@@ -44,6 +48,8 @@ module.exports = async (req, res) => {
           createdAt: true
         }
       });
+      
+      console.log(`관리자 API: ${pendingUsers.length}명의 VIP 승인 대기 사용자 조회`);
       
       return res.status(200).json({ 
         success: true, 

@@ -45,27 +45,31 @@ module.exports = async (req, res) => {
     }
     
     // 사용자 확인
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { username }
     });
     
     // 사용자가 없는 경우
     if (!user) {
       // 사용자 자동 생성 (텔레그램에서 온 요청은 사용자가 데이터베이스에 없을 수 있음)
-      if (action === 'approve' && username && depositName) {
+      try {
         // 임시 비밀번호 생성 (사용자가 나중에 변경해야 함)
-        const tempPassword = Math.random().toString(36).substring(2, 8);
+        const tempPassword = username; // 사용자명과 동일한 비밀번호로 설정
         
-        await prisma.user.create({
+        console.log(`사용자 '${username}' 자동 생성 시도`);
+        
+        user = await prisma.user.create({
           data: {
             username,
             password: tempPassword,
-            depositName,
+            depositName: depositName || username,
             membershipType: 'vip',
             vipStatus: 'approved',
             membershipExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30일 후
           }
         });
+        
+        console.log(`사용자 '${username}' 자동 생성 및 VIP 승인 완료`);
         
         return res.status(200).send(`
           <!DOCTYPE html>
@@ -83,40 +87,40 @@ module.exports = async (req, res) => {
             </head>
             <body>
               <div class="container">
-                <h1 class="success">✅ VIP 승인 완료</h1>
+                <h1 class="success">✅ 사용자 생성 및 VIP 승인 완료</h1>
                 <p>사용자 <strong>${username}</strong>의 계정이 생성되고 VIP로 승인되었습니다.</p>
-                <p>임시 비밀번호:</p>
-                <div class="password">${tempPassword}</div>
-                <p>사용자에게 이 비밀번호를 전달해주세요.</p>
+                <p>임시 비밀번호는 사용자명과 동일합니다 (${tempPassword}).</p>
+                <p><a href="/">메인 페이지로 돌아가기</a></p>
+              </div>
+            </body>
+          </html>
+        `);
+      } catch (createError) {
+        console.error('사용자 생성 오류:', createError);
+        return res.status(500).send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>사용자 생성 오류</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+                .error { color: red; }
+                .container { max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1 class="error">❌ 사용자 생성 오류</h1>
+                <p>사용자 <strong>${username}</strong> 생성 중 오류가 발생했습니다.</p>
+                <p>오류 메시지: ${createError.message}</p>
                 <p><a href="/">메인 페이지로 돌아가기</a></p>
               </div>
             </body>
           </html>
         `);
       }
-      
-      return res.status(404).send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>사용자 없음</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-              .warning { color: orange; }
-              .container { max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1 class="warning">⚠️ 사용자 없음</h1>
-              <p>사용자 <strong>${username}</strong>을(를) 찾을 수 없습니다.</p>
-              <p><a href="/">메인 페이지로 돌아가기</a></p>
-            </div>
-          </body>
-        </html>
-      `);
     }
     
     // VIP 승인 처리
