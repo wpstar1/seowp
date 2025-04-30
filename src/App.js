@@ -5,8 +5,8 @@ import { useAuth } from './contexts/LocalAuthContext';
 import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
-// OpenAI API 키
-const OPENAI_API_KEY = "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";
+// OpenAI API 키 - 환경 변수로 관리 (배포 시 설정 필요)
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "YOUR_API_KEY_HERE";
 
 function App() {
   // 인증 관련 변수
