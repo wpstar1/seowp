@@ -124,10 +124,10 @@ export const updateVipStatus = async (username, isVip, vipStatus = 'approved', e
 
 // VIP 승인 링크 생성
 export function generateVipApprovalLink(username, depositName) {
-  // 새로운 API 엔드포인트 사용
+  // 고정 URL 사용 (seowp.vercel.app)
   const baseUrl = window.location.hostname === 'localhost' 
     ? `http://localhost:${window.location.port || 3000}`
-    : `https://${window.location.hostname}`;
+    : `https://seowp.vercel.app`;
   
   // DirectApprove API로 변경
   return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=approve`;
@@ -135,9 +135,10 @@ export function generateVipApprovalLink(username, depositName) {
 
 // VIP 거부 링크 생성
 export function generateVipRejectionLink(username, depositName) {
+  // 고정 URL 사용 (seowp.vercel.app)
   const baseUrl = window.location.hostname === 'localhost' 
     ? `http://localhost:${window.location.port || 3000}`
-    : `https://${window.location.hostname}`;
+    : `https://seowp.vercel.app`;
   
   // DirectApprove API로 변경
   return `${baseUrl}/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=reject`;

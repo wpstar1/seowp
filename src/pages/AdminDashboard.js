@@ -34,13 +34,34 @@ const AdminDashboard = () => {
   }, [currentUser, navigate]);
   
   // 사용자 목록 로드
-  const loadUsers = () => {
+  const loadUsers = async () => {
     try {
+      setLoading(true);
+      
+      // API로 사용자 목록 가져오기 시도
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.users)) {
+            setUsers(data.users);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.error('API에서 사용자 목록 로드 실패:', apiError);
+      }
+      
+      // API 실패 시 localStorage에서 가져오기 (폴백)
       const usersJson = localStorage.getItem('smart_content_users');
       if (usersJson) {
         const parsedUsers = JSON.parse(usersJson);
         setUsers(parsedUsers);
+      } else {
+        setUsers([]);
       }
+      
       setLoading(false);
     } catch (error) {
       console.error('사용자 목록 로드 오류:', error);
