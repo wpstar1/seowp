@@ -1,5 +1,5 @@
 import { executeQuery } from '../lib/db';
-import { saveUserData, checkVipStatus } from './dbService';
+import { getUserByUsername, createUser, updateVipStatus, checkVipStatus } from './dbService';
 
 // 사용자 로그인 함수
 export async function loginUser(username, password) {
@@ -27,27 +27,24 @@ export async function loginUser(username, password) {
     // 로그인 시간 업데이트
     await executeQuery('UPDATE users SET updated_at = NOW() WHERE username = $1', [username]);
     
-    // 로컬 스토리지에 사용자 정보 유지
-    localStorage.setItem('smart_content_current_user', username);
-    
-    // 세션 유지를 위한 만료 시간 설정 (7일)
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 7);
-    localStorage.setItem('smart_content_login_expiry', expiryDate.getTime().toString());
+    // 세션 정보 저장
+    const sessionId = await createSession(username);
     
     // VIP 상태 확인
     const vipResult = await checkVipStatus(username);
     const isVip = vipResult.success && vipResult.isVip;
     
     // 비밀번호 정보는 제외하고 리턴
-    delete user.password;
+    const userData = { ...user };
+    delete userData.password;
     
     return { 
       success: true, 
       user: {
-        ...user,
+        ...userData,
         isVip,
-        isAdmin: user.username === '1111'
+        isAdmin: user.isadmin,
+        sessionId
       } 
     };
   } catch (error) {
@@ -71,141 +68,112 @@ export async function registerUser(username, password, confirmPassword) {
       return { success: false, error: '이미 사용 중인 사용자명입니다.' };
     }
     
-    const now = new Date().toISOString();
-    let membershipType = 'basic';
-    let vipStatus = 'none';
-    let membershipExpiry = null;
-    
-    // 관리자 계정(1111)은 자동으로 VIP 권한 부여
-    if (username === '1111') {
-      membershipType = 'vip';
-      vipStatus = 'approved';
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1); // 1년 유효기간
-      membershipExpiry = expiryDate.toISOString();
-    }
-    
     // 새 사용자 생성
-    const result = await executeQuery(
-      'INSERT INTO users (username, password, membership_type, vip_status, membership_expiry, is_admin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [username, password, membershipType, vipStatus, membershipExpiry, username === '1111']
-    );
+    const userData = {
+      username, 
+      password,
+      email: ''
+    };
     
-    if (!result.rows || result.rows.length === 0) {
+    const result = await createUser(userData);
+    
+    if (!result.success) {
       throw new Error(result.error || '사용자 등록 중 오류가 발생했습니다.');
     }
     
-    const user = result.rows[0];
-    
-    // 로컬 스토리지에도 사용자 정보 저장 (백업 및 동기화)
-    const newLocalUser = {
-      username,
-      password,
-      membershipType,
-      vipStatus,
-      membershipExpiry,
-      createdAt: now,
-      updatedAt: now,
-      isAdmin: username === '1111',
-      savedLinks: [],
-      previousKeywords: []
-    };
-    
-    const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-    localUsers.push(newLocalUser);
-    localStorage.setItem('smart_content_users', JSON.stringify(localUsers));
-    
-    // 관리자 페이지에서 볼 수 있도록 DB 캐시 업데이트
-    const dbCache = JSON.parse(localStorage.getItem('db_users_cache') || '[]');
-    dbCache.push({
-      username,
-      password,
-      membership_type: membershipType,
-      vip_status: vipStatus,
-      membership_expiry: membershipExpiry,
-      created_at: now,
-      updated_at: now,
-      is_admin: username === '1111'
-    });
-    localStorage.setItem('db_users_cache', JSON.stringify(dbCache));
-    
-    // 비밀번호 정보는 제외하고 리턴
-    delete user.password;
-    
-    return { 
-      success: true, 
-      user: {
-        ...user,
-        isVip: username === '1111',
-        isAdmin: username === '1111'
-      } 
-    };
+    return { success: true, message: '회원가입이 완료되었습니다. 로그인해주세요.' };
   } catch (error) {
-    console.error('사용자 등록 오류:', error);
-    return { success: false, error: error.message || '사용자 등록 중 오류가 발생했습니다.' };
+    console.error('회원가입 오류:', error);
+    return { success: false, error: error.message || '회원가입 중 오류가 발생했습니다.' };
   }
 }
 
 // 로그아웃 함수
-export function logoutUser() {
+export async function logoutUser(sessionId) {
   try {
-    // 로컬 스토리지에서 현재 사용자 정보 제거
-    localStorage.removeItem('smart_content_current_user');
-    localStorage.removeItem('smart_content_login_expiry');
-    
+    // 세션 정보 삭제
+    await deleteSession(sessionId);
     return { success: true };
   } catch (error) {
     console.error('로그아웃 오류:', error);
-    return { success: false, error: error.message || '로그아웃 중 오류가 발생했습니다.' };
+    return { success: false, error: '로그아웃 중 오류가 발생했습니다.' };
   }
 }
 
 // 현재 사용자 정보 가져오기
-export async function getCurrentUser() {
+export async function getCurrentUser(sessionId) {
   try {
-    const username = localStorage.getItem('smart_content_current_user');
+    // 세션 정보 확인
+    const sessionResult = await getSession(sessionId);
     
-    if (!username) {
+    if (!sessionResult.success) {
       return { success: false, error: '로그인된 사용자가 없습니다.' };
     }
     
-    // 로그인 만료 시간 확인
-    const loginExpiry = localStorage.getItem('smart_content_login_expiry');
-    const currentTime = new Date().getTime();
+    const username = sessionResult.data.username;
     
-    if (!loginExpiry || currentTime > parseInt(loginExpiry)) {
-      // 로그인 세션이 만료됨
-      localStorage.removeItem('smart_content_current_user');
-      localStorage.removeItem('smart_content_login_expiry');
-      return { success: false, error: '로그인 세션이 만료되었습니다.' };
-    }
+    // 데이터베이스에서 사용자 정보 조회
+    const result = await getUserByUsername(username);
     
-    // IndexedDB에서 사용자 정보 조회
-    const result = await executeQuery('SELECT * FROM users WHERE username = $1', [username]);
-    
-    if (!result.rows || result.rows.length === 0) {
+    if (!result.success) {
       return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
     }
     
-    const user = result.rows[0];
+    const user = result.data;
     
     // VIP 상태 확인
     const vipResult = await checkVipStatus(username);
     const isVip = vipResult.success && vipResult.isVip;
     
-    // 비밀번호 정보는 제외하고 리턴
-    delete user.password;
+    // 비밀번호 정보 제외
+    const userData = { ...user };
+    delete userData.password;
     
     return { 
       success: true, 
       user: {
-        ...user,
+        ...userData,
         isVip,
-        isAdmin: user.username === '1111'
+        isAdmin: user.isadmin
       } 
     };
   } catch (error) {
-    console.error('현재 사용자 정보 조회 오류:', error);
-    return { success: false, error: error.message || '사용자 정보 조회 중 오류가 발생했습니다.' };
+    console.error('사용자 정보 조회 오류:', error);
+    return { success: false, error: '사용자 정보 조회 중 오류가 발생했습니다.' };
+  }
+}
+
+// 세션 생성 함수
+async function createSession(username) {
+  try {
+    const sessionId = await executeQuery('INSERT INTO sessions (username) VALUES ($1) RETURNING id', [username]);
+    return sessionId.rows[0].id;
+  } catch (error) {
+    console.error('세션 생성 오류:', error);
+    throw error;
+  }
+}
+
+// 세션 정보 가져오기 함수
+async function getSession(sessionId) {
+  try {
+    const result = await executeQuery('SELECT * FROM sessions WHERE id = $1', [sessionId]);
+    if (!result.rows || result.rows.length === 0) {
+      return { success: false, error: '세션 정보를 찾을 수 없습니다.' };
+    }
+    return { success: true, data: result.rows[0] };
+  } catch (error) {
+    console.error('세션 정보 조회 오류:', error);
+    throw error;
+  }
+}
+
+// 세션 삭제 함수
+async function deleteSession(sessionId) {
+  try {
+    await executeQuery('DELETE FROM sessions WHERE id = $1', [sessionId]);
+  } catch (error) {
+    console.error('세션 삭제 오류:', error);
+    throw error;
   }
 }

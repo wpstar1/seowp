@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NEON_DATABASE_URL")
+}
+
+// 사용자 모델
+model User {
+  id              String    @id @default(uuid())
+  username        String    @unique
+  password        String
+  membershipType  String    @default("regular") // "regular" 또는 "vip"
+  vipStatus       String?   // "pending", "approved", "rejected"
+  depositName     String?   // VIP 업그레이드 신청시 입금자명
+  membershipExpiry DateTime? // VIP 멤버십 만료일
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // 관계 설정
+  links           Link[]
+  keywords        PreviousKeyword[]
+  contents        GeneratedContent[]
+}
+
+// 링크 모델
+model Link {
+  id        String  @id @default(uuid())
+  url       String
+  keyword   String
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// 이전에 사용한 키워드 모델
+model PreviousKeyword {
+  id        String  @id @default(uuid())
+  keyword   String
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// 생성된 콘텐츠 모델
+model GeneratedContent {
+  id          String  @id @default(uuid())
+  title       String
+  content     String  @db.Text
+  keyword     String
+  contentType String  @default("blog")
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// VIP 신청 및 승인 로그
+model VipRequestLog {
+  id           String  @id @default(uuid())
+  username     String
+  status       String  // "pending", "approved", "rejected"
+  depositName  String?
+  approvedBy   String?
+  requestDate  DateTime @default(now())
+  responseDate DateTime?
+}

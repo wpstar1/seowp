@@ -1,14 +1,14 @@
-import { createPool } from '@vercel/postgres';
+import { createClient } from '@vercel/postgres';
 
 // Vercel PostgreSQL 데이터베이스 연결 설정
-let pool;
+let client;
 
 try {
   // 환경 변수에서 데이터베이스 연결 문자열 가져오기
   const connectionString = "prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlfa2V5IjoiNzNhM2QyZDUtNTY3MC00ZDRjLWJkOWMtNjZiZDBhYzJmYmExIiwidGVuYW50X2lkIjoiZTBkNzExNTc3OWI3YjI1Mzg4ZWY5ZmNkMDVmMjEwMzExYjRkYmI3YzhhMTQ1NDZhNjM3ZTBlOGM5NWNkY2QwYiIsImludGVybmFsX3NlY3JldCI6IjFlNDA4YTRhLWU3NDAtNGYzZS04N2E5LTVkOTYxNTMzOTVlMSJ9.vn-V-OBLlzEgWbz91tCJ3yj6k9OoRIXR6XXruCNT7u0";
   
-  // 풀 생성
-  pool = createPool({
+  // 클라이언트 생성
+  client = createClient({
     connectionString,
   });
   
@@ -20,13 +20,12 @@ try {
 // 쿼리 실행 함수
 async function executeQuery(query, params = []) {
   try {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(query, params);
-      return result;
-    } finally {
-      client.release();
+    if (!client) {
+      throw new Error('데이터베이스 연결이 설정되지 않았습니다.');
     }
+    
+    const result = await client.query(query, params);
+    return result;
   } catch (error) {
     console.error('쿼리 실행 오류:', error);
     // 로컬 스토리지로 폴백하는 로직을 여기에 구현
@@ -47,7 +46,20 @@ async function initDatabase() {
         membershipType VARCHAR(50) DEFAULT 'free',
         vipStatus VARCHAR(50) DEFAULT 'none',
         vipExpireDate TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         isAdmin BOOLEAN DEFAULT FALSE
+      )
+    `);
+    
+    // 세션 테이블 생성
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) REFERENCES users(username) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days'),
+        is_active BOOLEAN DEFAULT TRUE
       )
     `);
     
@@ -68,4 +80,4 @@ async function initDatabase() {
   }
 }
 
-export { executeQuery, initDatabase, pool };
+export { executeQuery, initDatabase, client };

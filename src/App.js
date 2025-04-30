@@ -1,8 +1,12 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
-import { loginUser, registerUser, logoutUser, getCurrentUser } from './services/authService';
-import { checkVipStatus, saveUserData } from './services/dbService';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import axios from 'axios';
 import DatabaseInitializer from './components/DatabaseInitializer';
+import * as dbService from './services/dbIntegrationService';
+import * as prismaService from './services/prismaService';
+import * as prismaAuthService from './services/prismaAuthService';
 
 function App() {
   // 상태 관리
@@ -18,24 +22,7 @@ function App() {
   const [headlines, setHeadlines] = useState([]);
   const [seoAnalysis, setSeoAnalysis] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');15 vulnerabilities (7 moderate, 8 high)
-  
-  To address issues that do not require attention, run:
-    npm audit fix
-  
-  To address all issues (including breaking changes), run:
-    npm audit fix --force
-  
-  Run `npm audit` for details.
-  Exit Code 0
-  
-  Not auto-run
-  Thought Process
-  
-  
-  이제 IndexedDB를 사용하여 이 문제를 해결해보겠습니다. IndexedDB는 브라우저에 내장된 강력한 데이터베이스로, 로컬 스토리지보다 훨씬 더 많은 데이터를 저장할 수 있고 복잡한 쿼리도 가능합니다.
-  
-  IndexedDB를 사용하는 db.js 파일을 새로 만들겠습니다:
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingTips, setLoadingTips] = useState([]);
@@ -94,7 +81,8 @@ function App() {
       
       // 사용자 데이터 로드 - 대소문자 구분 없이 사용자 찾기
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
+      // currentUser가 존재할 때만 비교 진행
+      const user = currentUser ? users.find(u => u.username && u.username.toLowerCase() === currentUser.toLowerCase()) : null;
       
       if (user) {
         console.log('초기 로딩: 사용자 데이터 확인', user);
@@ -160,21 +148,6 @@ function App() {
         
         // API 호출 시도
         try {
-          // 우선 로컬에서 처리
-          const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-          const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
-          
-          if (userIndex >= 0) {
-            const user = users[userIndex];
-            if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-              setIsVip(true);
-            } else {
-              setIsVip(false);
-            }
-          }
-          
-          // 이전 API 호출 및 응답 처리 로직은 주석 처리
-          /*
           const response = await fetch('https://seo-beige.vercel.app/api/approved-users');
           if (!response.ok) {
             console.error('API 응답 오류:', response.status);
@@ -581,7 +554,7 @@ function App() {
     // 기본 콘텐츠 템플릿 생성
     let contentTemplate = generateBaseContent();
     
-    // 콘텐츠를 여러 섹션으로 분할 (마지막 '참고자료' 부분 분리)
+    // 콘텐츠를 여러 섹션으로 분할 (마지막 '결론' 부분 분리)
     const contentParts = contentTemplate.split('## 결론');
     const mainContent = contentParts[0];
     const conclusion = contentParts.length > 1 ? contentParts[1] : '';
@@ -1270,7 +1243,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
   };
 
   // 로그인 함수
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setAuthError('');
     
     if (!username || !password) {
@@ -1281,6 +1254,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     // 사용자 정보 확인 - 대소문자 구분 없이 사용자명 비교
     const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
     const user = users.find(u => 
+      u.username && typeof u.username === 'string' && 
       u.username.toLowerCase() === username.toLowerCase() && 
       u.password === password
     );
@@ -1295,7 +1269,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     setIsLoggedIn(true);
     setShowLoginModal(false);
     
-    // 관리자 계정(1111) 자동 VIP 상태 부여
+    // 관리자 계정(1111)은 자동 VIP 상태 부여
     if (user.username === '1111') {
       console.log('로그인: 관리자 계정은 자동으로 VIP 회원 권한을 받습니다.');
       
@@ -1334,7 +1308,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
   };
   
   // 회원가입 함수
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setAuthError('');
     
     if (!username || !password) {
@@ -1405,8 +1379,9 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
     const currentUser = localStorage.getItem('smart_content_current_user');
     if (currentUser) {
       const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-      // 대소문자 구분 없이 사용자 찾기
-      const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
+      // 대소문자 구분 없이 사용자 찾기 - 안전하게 조회
+      const user = users.find(u => u.username && typeof u.username === 'string' && 
+        u.username.toLowerCase() === currentUser.toLowerCase());
       
       const isUserVip = user && user.membershipType === 'vip' && user.vipStatus === 'approved';
       console.log('VIP 상태 체크 결과:', isUserVip, user);
@@ -2848,7 +2823,7 @@ ${keyword}에 대해 더 알고 싶으시면 언제든 댓글 남겨주세요! �
                       }
                       
                       // 확인 팝업 표시
-                      if (window.confirm(`예금주와 금액이 정확한지 확인해주세요.\n\n예금주: ${depositName}\n금액: 19,900원\n\nVIP 신청을 진행하시겠습니까?`)) {
+                      if (window.confirm(`예금주와 금액이 정확한지 확인해주세요.\n\n예금주: ${depositName}\n금액: 29,000원\n\nVIP 신청을 진행하시겠습니까?`)) {
                         // 버튼 애니메이션 효과
                         const button = event.target;
                         button.classList.add('button-pressed');

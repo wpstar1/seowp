@@ -1,77 +1,77 @@
 import React, { useEffect, useState } from 'react';
-import { initializeDatabase } from '../lib/db';
+import { initializeDatabase } from '../services/dbService';
+import prisma from '../lib/prisma';
+import { migrateLocalStorageToDatabase } from '../services/prismaService';
 
 /**
- * 데이터베이스 초기화를 담당하는 컴포넌트
- * 앱이 시작될 때 한 번만 실행되며 필요한 테이블을 생성하고
- * 로컬 스토리지의 데이터를 IndexedDB로 마이그레이션합니다.
+ * 데이터베이스 초기화 컴포넌트
+ * 앱이 시작될 때 데이터베이스 연결을 설정하고 필요한 테이블을 생성합니다.
+ * Prisma 클라이언트를 통한 PostgreSQL 연결도 설정합니다.
  */
 const DatabaseInitializer = () => {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState('데이터베이스 초기화 중...');
-  const [showMessage, setShowMessage] = useState(true);
 
   useEffect(() => {
-    const initDb = async () => {
+    const setupDatabase = async () => {
       try {
-        console.log('IndexedDB 데이터베이스 초기화 중...');
-        setMessage('IndexedDB 데이터베이스 연결 및 초기화 중...');
+        console.log('데이터베이스 초기화 시작...');
         
-        // 데이터베이스 초기화 (테이블 생성 및 로컬 스토리지 마이그레이션)
-        const result = await initializeDatabase();
-        
-        if (result.success) {
-          console.log('IndexedDB 데이터베이스 초기화 성공');
-          setMessage('IndexedDB 데이터베이스 초기화 성공! 브라우저에 데이터가 안전하게 저장되었습니다.');
+        // Prisma 연결 테스트
+        try {
+          await prisma.$queryRaw`SELECT 1`;
+          console.log('Prisma 데이터베이스 연결 성공!');
           
-          // 사용자 데이터 캐시 확인
-          const dbCache = JSON.parse(localStorage.getItem('db_users_cache') || '[]');
-          console.log(`IndexedDB에서 ${dbCache.length}명의 사용자 정보를 캐시했습니다`);
+          // 로컬 스토리지에서 데이터베이스로 마이그레이션
+          const migrationResult = await migrateLocalStorageToDatabase();
+          if (migrationResult.success) {
+            console.log('로컬 스토리지 데이터 마이그레이션 성공:', migrationResult.message);
+          } else {
+            console.warn('마이그레이션 중 문제 발생:', migrationResult.error);
+          }
           
-          // 3초 후 메시지 숨김
-          setTimeout(() => setShowMessage(false), 3000);
           setInitialized(true);
-        } else {
-          console.error('IndexedDB 데이터베이스 초기화 실패:', result.error);
-          setError(result.error);
-          setMessage(`IndexedDB 데이터베이스 초기화 실패: ${result.error}`);
-          // 오류 발생 시 3초 후 메시지 숨김
-          setTimeout(() => setShowMessage(false), 3000);
+        } catch (prismaError) {
+          console.error('Prisma 데이터베이스 연결 실패:', prismaError);
+          
+          // Prisma 연결 실패 시 기존 방식으로 폴백
+          console.log('기존 Vercel Postgres 연결 시도 중...');
+          const result = await initializeDatabase();
+          
+          if (result.success) {
+            console.log('기존 데이터베이스 초기화 완료!');
+            setInitialized(true);
+          } else {
+            console.error('기존 데이터베이스 초기화 실패:', result.error);
+            setError(result.error);
+          }
         }
       } catch (err) {
-        console.error('IndexedDB 데이터베이스 초기화 중 오류 발생:', err);
-        setError(err.message || '알 수 없는 오류');
-        setMessage(`IndexedDB 데이터베이스 오류: ${err.message || '알 수 없는 오류'}`);
-        // 오류 발생 시 3초 후 메시지 숨김
-        setTimeout(() => setShowMessage(false), 3000);
+        console.error('데이터베이스 초기화 오류:', err);
+        setError(err.message || '데이터베이스 초기화 중 오류가 발생했습니다.');
       }
     };
 
-    initDb();
+    setupDatabase();
   }, []);
 
-  // 메시지 UI 컴포넌트 렌더링
-  if (showMessage) {
+  // 초기화가 실패한 경우 오류 메시지 표시
+  if (error) {
     return (
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        backgroundColor: error ? '#f8d7da' : '#d4edda',
-        color: error ? '#721c24' : '#155724',
-        padding: '10px 15px',
-        borderRadius: '4px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        zIndex: 9999,
-        maxWidth: '300px'
-      }}>
-        {message}
+      <div className="database-error">
+        <h3>데이터베이스 연결 오류</h3>
+        <p>{error}</p>
+        <p>
+          <small>
+            데이터베이스 연결에 실패했습니다. 로컬 스토리지를 사용한 제한된 기능으로 실행됩니다.
+            관리자에게 문의하세요.
+          </small>
+        </p>
       </div>
     );
   }
-  
-  // 메시지가 표시되지 않을 때는 null 반환
+
+  // 컴포넌트는 UI를 렌더링하지 않습니다.
   return null;
 };
 
