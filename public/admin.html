@@ -156,6 +156,34 @@
                 font-size: 12px;
             }
         }
+        
+        /* 로딩 인디케이터 */
+        #loadingIndicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* 새로고침 버튼 */
+        .refresh-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-button:hover {
+            background-color: #3e8e41;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(62, 142, 65, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -170,11 +198,11 @@
     <div class="admin-container">
         <h1 class="admin-title">관리자 대시보드</h1>
         
-        <div id="message-container"></div>
+        <div id="messageContainer"></div>
 
         <div class="admin-card">
             <h2>사용자 관리</h2>
-            <table class="user-list" id="user-table">
+            <table class="user-list" id="userTable">
                 <thead>
                     <tr>
                         <th>아이디</th>
@@ -185,7 +213,7 @@
                         <th>액션</th>
                     </tr>
                 </thead>
-                <tbody id="user-list-body">
+                <tbody id="userTableBody">
                     <!-- 사용자 목록이 JavaScript로 여기에 로드됩니다 -->
                 </tbody>
             </table>
@@ -195,379 +223,269 @@
             <h2>통계</h2>
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>총 사용자:</strong> <span id="total-users">0</span>
+                    <strong>총 사용자:</strong> <span id="totalUsers">0</span>
                 </div>
                 <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>VIP 사용자:</strong> <span id="vip-users">0</span>
+                    <strong>VIP 사용자:</strong> <span id="vipUsers">0</span>
                 </div>
                 <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>오늘 생성된 콘텐츠:</strong> <span id="contents-today">0</span>
-                </div>
-                <div style="min-width: 200px; margin-bottom: 15px;">
-                    <strong>총 콘텐츠 생성수:</strong> <span id="total-contents">0</span>
+                    <strong>오늘 가입한 사용자:</strong> <span id="todayNewUsers">0</span>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="loadingIndicator">로딩 중...</div>
+
     <script>
-        // 메인으로 돌아가기
-        function goBack() {
-            window.location.href = "/";
-        }
-
-        // 메시지 표시 함수
-        function showMessage(text, type) {
-            const messageContainer = document.getElementById('message-container');
-            const messageElement = document.createElement('div');
-            messageElement.className = `message ${type}`;
-            messageElement.textContent = text;
-            messageContainer.appendChild(messageElement);
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 아래의 코드는 현재 사용자가 관리자인지 확인합니다
+            if (localStorage.getItem('smart_content_current_user') !== '1111') {
+                alert('관리자만 접근할 수 있습니다.');
+                window.location.href = '/';
+                return;
+            }
             
-            // 자동 제거
-            setTimeout(() => {
-                messageElement.style.opacity = '0';
-                messageElement.style.transition = 'opacity 0.5s';
-                setTimeout(() => messageContainer.removeChild(messageElement), 500);
-            }, 4000);
-        }
-
-        // API로 사용자 데이터 가져오기
+            // 초기 사용자 목록 가져오기
+            fetchUsers();
+            
+            // 30초마다 사용자 목록을 자동으로 갱신합니다
+            setInterval(fetchUsers, 30000);
+            
+            // 새로고침 버튼 추가
+            const refreshButton = document.createElement('button');
+            refreshButton.innerText = '목록 새로고침';
+            refreshButton.className = 'refresh-button';
+            refreshButton.onclick = fetchUsers;
+            document.querySelector('.user-management h2').after(refreshButton);
+        });
+        
+        // 사용자 목록 가져오기 함수
         async function fetchUsers() {
             try {
-                // 관리자 계정 확인
-                const currentUser = localStorage.getItem('smart_content_current_user');
-                if (currentUser !== '1111') {
-                    showMessage('관리자 권한이 필요합니다.', 'error');
-                    setTimeout(() => {
-                        window.location.href = "/";
-                    }, 2000);
-                    return [];
-                }
+                console.log('관리자 페이지: 사용자 목록 가져오기 시도');
+                document.getElementById('loadingIndicator').style.display = 'block';
                 
-                // API 호출 (관리자 API)
-                try {
-                    const response = await fetch(`/api/admin?adminUsername=${currentUser}`);
-                    if (!response.ok) {
-                        throw new Error('API 요청 실패');
-                    }
+                // API에서 사용자 목록 요청 (캐시 방지를 위한 timestamp 추가)
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/admin?adminUsername=1111&t=${timestamp}`);
+                
+                // API 응답 처리
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API 응답:', data);
                     
-                    const apiData = await response.json();
-                    
-                    // API 연결 실패 시 로컬 스토리지로 폴백
-                    if (!apiData.success) {
-                        throw new Error(apiData.message || 'API 요청 실패');
-                    }
-                    
-                    // 사용자 목록 API 호출
-                    let allUsers = [];
-                    
-                    // VIP 신청 중인 유저 목록
-                    const pendingUsers = apiData.requests || [];
-                    console.log('VIP 신청 대기 중인 사용자:', pendingUsers);
-                    
-                    // 전체 사용자 목록
-                    if (apiData.users && Array.isArray(apiData.users)) {
-                        console.log('API에서 가져온 모든 사용자:', apiData.users);
-                        allUsers = apiData.users;
+                    if (data.success) {
+                        // API에서 가져온 사용자 목록 표시
+                        displayUsers(data.users || []);
+                        
+                        // 통계 업데이트
+                        updateStats(data.users || []);
+                        
+                        // 성공 메시지 표시
+                        showMessage('success', `${data.users.length}명의 사용자 데이터를 성공적으로 불러왔습니다.`);
                     } else {
-                        // API에서 사용자 목록을 가져오지 못한 경우 로컬 스토리지 사용
-                        const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                        console.error('API 오류:', data.message);
+                        showMessage('error', `API 오류: ${data.message}`);
                         
-                        // 중복 제거 및 통합
-                        const localUsernames = new Set(localUsers.map(u => u.username));
-                        
-                        // 로컬 스토리지 사용자 목록 사용
-                        allUsers = [...localUsers];
-                        
-                        // VIP 신청자 중 로컬에 없는 사용자 추가
-                        pendingUsers.forEach(pendingUser => {
-                            if (!localUsernames.has(pendingUser.username)) {
-                                allUsers.push({
-                                    ...pendingUser,
-                                    membershipType: 'regular',
-                                    vipStatus: 'pending'
-                                });
-                            }
-                        });
+                        // API에서 오류 발생 시 로컬 스토리지의 데이터 사용
+                        fallbackToLocalStorage();
                     }
+                } else {
+                    const errorText = await response.text();
+                    console.error('API 요청 실패:', response.status, errorText);
+                    showMessage('error', `API 요청 실패 (${response.status}): ${errorText}`);
                     
-                    return allUsers;
-                } catch (error) {
-                    console.warn('API 요청 실패, 로컬 스토리지로 폴백:', error.message);
-                    
-                    // API 실패 시 로컬 스토리지만 사용
-                    const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                    console.log('로컬 스토리지 사용자:', localUsers);
-                    
-                    // 로컬 스토리지에 admin 계정이 없으면 추가
-                    if (!localUsers.some(user => user.username === '1111')) {
-                        localUsers.push({
-                            username: '1111',
-                            password: '1111',
-                            membershipType: 'vip',
-                            vipStatus: 'approved',
-                            createdAt: new Date().toISOString()
-                        });
-                        localStorage.setItem('smart_content_users', JSON.stringify(localUsers));
-                    }
-                    
-                    return localUsers;
+                    // API 요청 실패 시 로컬 스토리지의 데이터 사용
+                    fallbackToLocalStorage();
                 }
             } catch (error) {
-                console.error('데이터 가져오기 오류:', error);
-                showMessage('사용자 데이터를 가져오는 중 오류가 발생했습니다.', 'error');
-                return [];
+                console.error('사용자 목록 가져오기 오류:', error);
+                showMessage('error', `네트워크 오류: ${error.message}`);
+                
+                // 네트워크 오류 등의 경우 로컬 스토리지의 데이터 사용
+                fallbackToLocalStorage();
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
             }
         }
-
-        // VIP 상태 변경 함수
-        async function changeVipStatus(username, makeVip) {
+        
+        // 로컬 스토리지에서 사용자 목록 가져오기 (폴백)
+        function fallbackToLocalStorage() {
             try {
-                const currentUser = localStorage.getItem('smart_content_current_user');
-                if (currentUser !== '1111') {
-                    showMessage('관리자 권한이 필요합니다.', 'error');
-                    return;
-                }
+                console.log('로컬 스토리지에서 사용자 목록 가져오기');
                 
-                // API 호출 (VIP 승인 API)
-                const response = await fetch('/api/vip', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username,
-                        status: makeVip ? 'approved' : 'rejected',
-                        approvedBy: currentUser
-                    })
-                });
-                
-                const result = await response.json();
-                
-                // API 성공
-                if (result.success) {
-                    showMessage(result.message || `${username} 사용자의 VIP 상태가 변경되었습니다.`, 'success');
-                    loadUsers(); // 목록 새로고침
-                    return;
-                }
-                
-                // API 실패 시 로컬 스토리지로 폴백
-                console.warn('API 요청 실패, 로컬 스토리지 사용:', result.message);
-                
-                // 로컬 스토리지 업데이트
+                // 로컬 스토리지에서 사용자 목록 가져오기
                 const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                const updatedUsers = users.map(user => {
-                    if (user.username === username) {
-                        if (makeVip) {
-                            // VIP로 승인
-                            const expiryDate = new Date();
-                            expiryDate.setDate(expiryDate.getDate() + 30); // 30일 추가
-                            
-                            return {
-                                ...user,
-                                membershipType: 'vip',
-                                vipStatus: 'approved',
-                                membershipExpiry: expiryDate.toISOString()
-                            };
-                        } else {
-                            // VIP 거절
-                            return {
-                                ...user,
-                                vipStatus: 'rejected'
-                            };
-                        }
-                    }
-                    return user;
-                });
                 
-                localStorage.setItem('smart_content_users', JSON.stringify(updatedUsers));
-                showMessage(`${username} 사용자의 VIP 상태가 변경되었습니다.`, 'success');
-                loadUsers(); // 목록 새로고침
+                if (users.length === 0) {
+                    showMessage('warning', '저장된 사용자가 없습니다. 회원가입 페이지에서 새 사용자를 등록하세요.');
+                } else {
+                    // 사용자 목록 표시
+                    displayUsers(users);
+                    
+                    // 통계 업데이트
+                    updateStats(users);
+                    
+                    showMessage('info', `데이터베이스 연결 실패. 로컬 스토리지에서 ${users.length}명의 사용자를 불러왔습니다.`);
+                }
             } catch (error) {
-                console.error('VIP 상태 변경 중 오류:', error);
-                showMessage('VIP 상태 변경 중 오류가 발생했습니다.', 'error');
+                console.error('로컬 스토리지 접근 오류:', error);
+                showMessage('error', `로컬 스토리지 접근 오류: ${error.message}`);
+                
+                // 빈 목록 표시
+                displayUsers([]);
+                updateStats([]);
             }
         }
-
-        // 사용자 삭제 함수
-        async function deleteUser(username) {
-            // 삭제 확인
-            if (!confirm(`정말 ${username} 사용자를 삭제하시겠습니까?`)) {
+        
+        // 사용자 목록 표시 함수
+        function displayUsers(users) {
+            const userTableBody = document.getElementById('userTableBody');
+            userTableBody.innerHTML = '';
+            
+            if (users.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `<td colspan="6" style="text-align: center; padding: 20px;">등록된 사용자가 없습니다.</td>`;
+                userTableBody.appendChild(emptyRow);
+                return;
+            }
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                
+                // VIP 상태 결정 (membershipType과 vipStatus 모두 확인)
+                const isVip = (user.membershipType === 'vip' || user.membership_type === 'vip') && 
+                              (user.vipStatus === 'approved' || user.vip_status === 'approved');
+                const isPending = user.vipStatus === 'pending' || user.vip_status === 'pending';
+                
+                // 멤버십 만료일 포맷팅
+                let expiryDate = user.membershipExpiry || user.membership_expiry;
+                expiryDate = expiryDate 
+                    ? new Date(expiryDate).toLocaleDateString('ko-KR')
+                    : '없음';
+                    
+                // VIP가 아니거나 만료된 경우
+                if (!isVip) {
+                    expiryDate = '없음';
+                }
+                
+                // 생성일 포맷팅
+                const createdDate = user.createdAt || user.created_at;
+                const formattedDate = createdDate 
+                    ? new Date(createdDate).toLocaleDateString('ko-KR')
+                    : '알 수 없음';
+                
+                // VIP 상태에 따른 클래스 및 텍스트
+                let statusClass = '';
+                let statusText = '';
+                
+                if (isVip) {
+                    statusClass = 'vip';
+                    statusText = 'VIP';
+                } else if (isPending) {
+                    statusClass = 'pending';
+                    statusText = '승인 대기중';
+                } else {
+                    statusClass = 'regular';
+                    statusText = '일반';
+                }
+                
+                // 사용자명
+                const username = user.username;
+                
+                // 행 내용 설정
+                row.innerHTML = `
+                    <td>${username}</td>
+                    <td>${formattedDate}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                    <td>${expiryDate}</td>
+                    <td>${user.depositName || user.deposit_name || '-'}</td>
+                    <td>
+                        <button class="vip-button" onclick="approveVip('${username}', '${user.depositName || user.deposit_name || username}')">VIP 승인</button>
+                    </td>
+                `;
+                
+                userTableBody.appendChild(row);
+            });
+        }
+        
+        // VIP 수동 승인 함수
+        async function approveVip(username, depositName) {
+            if (!confirm(`${username} 사용자를 VIP로 승인하시겠습니까?`)) {
                 return;
             }
             
             try {
-                // 현재는 삭제 API가 없으므로 로컬 스토리지만 변경
-                const users = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                const filteredUsers = users.filter(user => user.username !== username);
+                document.getElementById('loadingIndicator').style.display = 'block';
+                const apiUrl = `/api/directApprove?username=${encodeURIComponent(username)}&depositName=${encodeURIComponent(depositName)}&action=approve`;
                 
-                if (users.length === filteredUsers.length) {
-                    showMessage(`${username} 사용자를 찾을 수 없습니다.`, 'error');
-                    return;
+                console.log('VIP 승인 API 호출:', apiUrl);
+                
+                // API 호출
+                const response = await fetch(apiUrl);
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    console.log('VIP 승인 성공:', responseText);
+                    
+                    showMessage('success', `${username} 사용자가 성공적으로 VIP로 승인되었습니다.`);
+                    
+                    // 사용자 목록 새로고침
+                    fetchUsers();
+                } else {
+                    const errorText = await response.text();
+                    console.error('승인 처리 중 API 오류:', errorText);
+                    
+                    showMessage('error', `승인 처리 중 오류가 발생했습니다: ${errorText}`);
                 }
-                
-                localStorage.setItem('smart_content_users', JSON.stringify(filteredUsers));
-                showMessage(`${username} 사용자가 삭제되었습니다.`, 'success');
-                loadUsers(); // 목록 새로고침
             } catch (error) {
-                console.error('사용자 삭제 중 오류:', error);
-                showMessage('사용자 삭제 중 오류가 발생했습니다.', 'error');
+                console.error('VIP 승인 처리 중 오류:', error);
+                showMessage('error', `VIP 승인 처리 중 네트워크 오류가 발생했습니다: ${error.message}`);
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
             }
         }
-
-        // 사용자 목록 로드 함수
-        async function loadUsers() {
-            const users = await fetchUsers();
-            const userTableBody = document.getElementById('user-list-body');
-            userTableBody.innerHTML = '';
-
-            // 통계 업데이트
-            document.getElementById('total-users').textContent = users.length;
+        
+        // 통계 업데이트 함수
+        function updateStats(users) {
+            // 전체 사용자 수
+            document.getElementById('totalUsers').textContent = users.length;
             
-            let vipCount = 0;
+            // VIP 사용자 수 (membershipType과 vipStatus 모두 확인)
+            const vipCount = users.filter(user => 
+                (user.membershipType === 'vip' || user.membership_type === 'vip') && 
+                (user.vipStatus === 'approved' || user.vip_status === 'approved')
+            ).length;
+            document.getElementById('vipUsers').textContent = vipCount;
             
-            // 사용자 목록 채우기
-            users.forEach(user => {
-                const row = document.createElement('tr');
-
-                // VIP 회원 카운트
-                if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-                    vipCount++;
-                }
-
-                // 사용자 이름 열
-                const usernameCell = document.createElement('td');
-                usernameCell.textContent = user.username;
-                row.appendChild(usernameCell);
-
-                // 가입일 열
-                const createdAtCell = document.createElement('td');
-                if (user.createdAt) {
-                    const date = new Date(user.createdAt);
-                    createdAtCell.textContent = date.toLocaleDateString();
-                } else {
-                    createdAtCell.textContent = '정보 없음';
-                }
-                row.appendChild(createdAtCell);
-
-                // 멤버십 상태 열
-                const membershipCell = document.createElement('td');
-                if (user.membershipType === 'vip' && user.vipStatus === 'approved') {
-                    const vipTag = document.createElement('span');
-                    vipTag.className = 'vip-tag';
-                    vipTag.textContent = 'VIP';
-                    membershipCell.appendChild(vipTag);
-                } else {
-                    membershipCell.textContent = '일반';
-                }
-                row.appendChild(membershipCell);
-
-                // VIP 만료일 열
-                const expiryCell = document.createElement('td');
-                if (user.membershipExpiry) {
-                    const expiryDate = new Date(user.membershipExpiry);
-                    expiryCell.textContent = expiryDate.toLocaleDateString();
-
-                    // 만료일까지 남은 일수 표시
-                    const today = new Date();
-                    const diffTime = expiryDate - today;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays > 0) {
-                        expiryCell.textContent += ` (${diffDays}일 남음)`;
-                    } else {
-                        expiryCell.textContent += ' (만료됨)';
-                    }
-                } else {
-                    expiryCell.textContent = '-';
-                }
-                row.appendChild(expiryCell);
-
-                // 상태 열
-                const statusCell = document.createElement('td');
-                if (user.vipStatus === 'pending') {
-                    statusCell.textContent = 'VIP 승인 대기중';
-                    statusCell.style.color = '#FFA000';
-                } else if (user.vipStatus === 'rejected') {
-                    statusCell.textContent = 'VIP 승인 거절됨';
-                    statusCell.style.color = '#D32F2F';
-                } else {
-                    statusCell.textContent = '정상';
-                    statusCell.style.color = '#2E7D32';
-                }
-                row.appendChild(statusCell);
-
-                // 액션 열
-                const actionCell = document.createElement('td');
-                
-                // VIP 전환 버튼 (대기 중인 사용자만)
-                if (user.vipStatus === 'pending') {
-                    const approveBtn = document.createElement('button');
-                    approveBtn.className = 'action-button vip-button';
-                    approveBtn.textContent = 'VIP 승인';
-                    approveBtn.onclick = () => changeVipStatus(user.username, true);
-                    
-                    const rejectBtn = document.createElement('button');
-                    rejectBtn.className = 'action-button delete-button';
-                    rejectBtn.textContent = '거절';
-                    rejectBtn.style.marginLeft = '5px';
-                    rejectBtn.onclick = () => changeVipStatus(user.username, false);
-                    
-                    actionCell.appendChild(approveBtn);
-                    actionCell.appendChild(rejectBtn);
-                } else if (user.username !== '1111') { // 관리자는 삭제 불가
-                    // 삭제 버튼
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'action-button delete-button';
-                    deleteBtn.textContent = '삭제';
-                    deleteBtn.onclick = () => deleteUser(user.username);
-                    actionCell.appendChild(deleteBtn);
-                }
-                
-                // VIP 승인 버튼 추가
-                const vipApproveBtn = document.createElement('button');
-                vipApproveBtn.className = 'action-button vip-button';
-                vipApproveBtn.textContent = 'VIP 승인';
-                vipApproveBtn.onclick = async () => {
-                    try {
-                        const apiUrl = `/api/directApprove?username=${encodeURIComponent(user.username)}&action=approve`;
-                        
-                        // API 호출
-                        const response = await fetch(apiUrl);
-                        
-                        if (response.ok) {
-                            alert(`${user.username} 사용자가 성공적으로 VIP로 승인되었습니다.`);
-                            // 사용자 목록 새로고침
-                            loadUsers();
-                        } else {
-                            const errorText = await response.text();
-                            alert(`승인 처리 중 오류가 발생했습니다: ${errorText}`);
-                        }
-                    } catch (error) {
-                        console.error('VIP 승인 처리 중 오류:', error);
-                        alert('VIP 승인 처리 중 네트워크 오류가 발생했습니다.');
-                    }
-                };
-                actionCell.appendChild(vipApproveBtn);
-                
-                row.appendChild(actionCell);
-                userTableBody.appendChild(row);
-            });
-
-            // VIP 사용자 카운트 업데이트
-            document.getElementById('vip-users').textContent = vipCount;
-
-            // 콘텐츠 통계는 아직 구현되지 않음
-            document.getElementById('contents-today').textContent = '0';
-            document.getElementById('total-contents').textContent = '0';
+            // 오늘 가입한 사용자 수
+            const today = new Date().toISOString().split('T')[0];
+            const todayUsers = users.filter(user => {
+                const createdAt = user.createdAt || user.created_at;
+                if (!createdAt) return false;
+                return createdAt.split('T')[0] === today;
+            }).length;
+            document.getElementById('todayNewUsers').textContent = todayUsers;
         }
         
-        // 페이지 로드 시 사용자 목록 불러오기
-        window.addEventListener('load', () => {
-            loadUsers();
-            showMessage('관리자 페이지에 접속했습니다.', 'info');
-        });
+        // 메시지 표시 함수
+        function showMessage(type, text) {
+            const messageContainer = document.getElementById('messageContainer');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = text;
+            
+            // 기존 메시지 제거
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(messageElement);
+            
+            // 3초 후 메시지 자동 삭제
+            setTimeout(() => {
+                messageElement.style.opacity = '0';
+                setTimeout(() => messageElement.remove(), 500);
+            }, 3000);
+        }
     </script>
 </body>
 </html>
