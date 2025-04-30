@@ -16,6 +16,15 @@ async function connectToDatabase() {
     // 여러 환경변수 이름 시도 (MONGO_URL, DATABASE_URL, MONGODB_URI 중 하나 사용)
     const mongoUri = process.env.MONGO_URL || process.env.DATABASE_URL || process.env.MONGODB_URI;
     
+    // 디버깅 로그 추가
+    console.log('MongoDB 연결 시도 중...');
+    console.log('환경변수 확인:', {
+      MONGO_URL_exists: !!process.env.MONGO_URL,
+      DATABASE_URL_exists: !!process.env.DATABASE_URL,
+      MONGODB_URI_exists: !!process.env.MONGODB_URI
+    });
+    console.log('사용할 URI:', mongoUri ? '설정됨 (보안상 표시하지 않음)' : '설정되지 않음');
+    
     // 연결 문자열이 없으면 로컬 스토리지 모드
     if (!mongoUri) {
       console.log('MongoDB URI가 설정되지 않았습니다. 로컬 스토리지 모드로 작동합니다.');
