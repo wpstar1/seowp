@@ -50,14 +50,15 @@ async function processPaymentRequest(userId, email) {
       
       // 관리자에게 승인 요청 메시지 보내기
       const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
-      const confirmUrl = `${appDomain}/api/approve?requestId=simulatedId_${Date.now()}&action=confirm&userId=${userId}&email=${email}`;
+      const requestId = `req_${Date.now()}_${userId}`;
+      const confirmUrl = `${appDomain}/api/directApprove?username=${userId}&depositName=${email}&action=approve`;
       
       await bot.sendMessage(
         adminChatId,
-        `💰 VIP 승인 요청\n\n사용자 ID: ${userId}\n결제 정보: ${email}\n요청 시간: ${new Date().toLocaleString()}\n\n승인 여부를 결정하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
+        `💰 VIP 신청 요청\n\n사용자: ${userId}\n예금주: ${email}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
       );
       
-      return `simulatedId_${Date.now()}`;
+      return requestId;
     }
 
     // Firebase가 초기화된 경우 정상 처리
@@ -73,11 +74,11 @@ async function processPaymentRequest(userId, email) {
     
     // 관리자에게 승인 요청 메시지 보내기
     const appDomain = process.env.APP_DOMAIN || 'https://seo-beige.vercel.app';
-    const confirmUrl = `${appDomain}/api/approve?requestId=${requestId}&action=confirm`;
+    const confirmUrl = `${appDomain}/api/directApprove?username=${userId}&depositName=${email}&action=approve`;
     
     await bot.sendMessage(
       adminChatId,
-      `💰 VIP 승인 요청\n\n사용자 ID: ${userId}\n결제 정보: ${email}\n요청 시간: ${new Date().toLocaleString()}\n\n승인 여부를 결정하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
+      `💰 VIP 신청 요청\n\n사용자: ${userId}\n예금주: ${email}\n날짜: ${new Date().toLocaleString()}\n금액: 29,000원\n\n승인하려면 아래 링크를 클릭하세요:\n${confirmUrl}`
     );
     
     return requestId;

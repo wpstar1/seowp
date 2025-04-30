@@ -21,8 +21,20 @@ module.exports = async (req, res) => {
       });
     }
     
-    // VIP 신청 목록 조회 (GET)
+    // 사용자 목록 조회 (GET)
     if (req.method === 'GET') {
+      // 전체 사용자 목록 조회 
+      const allUsers = await prisma.user.findMany({
+        select: {
+          username: true,
+          membershipType: true,
+          vipStatus: true,
+          depositName: true,
+          membershipExpiry: true,
+          createdAt: true
+        }
+      });
+      
       // 대기 중인 VIP 요청 조회
       const pendingUsers = await prisma.user.findMany({
         where: { vipStatus: 'pending' },
@@ -35,6 +47,7 @@ module.exports = async (req, res) => {
       
       return res.status(200).json({ 
         success: true, 
+        users: allUsers,
         requests: pendingUsers 
       });
     }

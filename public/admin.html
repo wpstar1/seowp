@@ -225,26 +225,31 @@
                     const pendingUsers = apiData.requests || [];
                     console.log('VIP 신청 대기 중인 사용자:', pendingUsers);
                     
-                    // 로컬 스토리지의 사용자 정보도 함께 표시 (폴백)
-                    const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
-                    
-                    // 중복 제거 및 통합
-                    const localUsernames = new Set(localUsers.map(u => u.username));
-                    
-                    // 실제로는 모든 사용자를 가져오는 API가 필요합니다.
-                    // 현재는 로컬 스토리지와 VIP 신청자 목록만 통합
-                    allUsers = [...localUsers];
-                    
-                    // VIP 신청자 중 로컬에 없는 사용자 추가
-                    pendingUsers.forEach(pendingUser => {
-                        if (!localUsernames.has(pendingUser.username)) {
-                            allUsers.push({
-                                ...pendingUser,
-                                membershipType: 'regular',
-                                vipStatus: 'pending'
-                            });
-                        }
-                    });
+                    // 전체 사용자 목록
+                    if (apiData.users && Array.isArray(apiData.users)) {
+                        console.log('API에서 가져온 모든 사용자:', apiData.users);
+                        allUsers = apiData.users;
+                    } else {
+                        // API에서 사용자 목록을 가져오지 못한 경우 로컬 스토리지 사용
+                        const localUsers = JSON.parse(localStorage.getItem('smart_content_users') || '[]');
+                        
+                        // 중복 제거 및 통합
+                        const localUsernames = new Set(localUsers.map(u => u.username));
+                        
+                        // 로컬 스토리지 사용자 목록 사용
+                        allUsers = [...localUsers];
+                        
+                        // VIP 신청자 중 로컬에 없는 사용자 추가
+                        pendingUsers.forEach(pendingUser => {
+                            if (!localUsernames.has(pendingUser.username)) {
+                                allUsers.push({
+                                    ...pendingUser,
+                                    membershipType: 'regular',
+                                    vipStatus: 'pending'
+                                });
+                            }
+                        });
+                    }
                     
                     return allUsers;
                 } catch (error) {
