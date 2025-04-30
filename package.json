@@ -26,8 +26,8 @@
     "dev": "vercel dev",
     "start": "react-scripts start",
     "start:prod": "serve -s build",
-    "build": "prisma generate && react-scripts build",
-    "postinstall": "prisma generate",
+    "build": "react-scripts build",
+    "postinstall": "prisma generate 2> /dev/null || true",
     "prisma:migrate": "prisma migrate deploy"
   },
   "browserslist": {
