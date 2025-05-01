@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/SupabaseAuthContext';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
-  const { currentUser, getUsersList, manageVipRequest } = useAuth();
+  const { currentUser, getAllUsersList, handleVipRequest } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,12 +20,12 @@ const AdminPanel = () => {
     const loadUsers = async () => {
       try {
         setLoading(true);
-        const result = await getUsersList();
+        const result = await getAllUsersList();
         
-        if (result.success) {
-          setUsers(result.data);
+        if (result) {
+          setUsers(result);
         } else {
-          setError(result.error || '사용자 목록을 불러오는데 실패했습니다.');
+          setError('사용자 목록을 불러오는데 실패했습니다.');
         }
       } catch (error) {
         console.error('사용자 목록 로드 오류:', error);
@@ -36,7 +36,7 @@ const AdminPanel = () => {
     };
 
     loadUsers();
-  }, [getUsersList]);
+  }, [getAllUsersList]);
 
   // VIP 승인/거부 팝업 표시
   const handleVipAction = (user, action) => {
@@ -49,31 +49,16 @@ const AdminPanel = () => {
   const confirmVipAction = async () => {
     try {
       const approve = actionType === 'approve';
-      const result = await manageVipRequest(selectedUser.username, approve);
+      await handleVipRequest(selectedUser.username, approve ? 'approve' : 'reject');
       
-      if (result.success) {
-        // 업데이트 된 사용자 정보 반영
-        setUsers(users.map(user => 
-          user.username === selectedUser.username 
-            ? { 
-                ...user, 
-                vipStatus: approve ? 'approved' : 'rejected',
-                membershipType: approve ? 'vip' : 'regular'
-              } 
-            : user
-        ));
-        
-        alert(`${selectedUser.username} 사용자의 VIP 신청이 ${approve ? '승인' : '거부'}되었습니다.`);
-      } else {
-        setError(result.error || 'VIP 상태 업데이트에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('VIP 상태 업데이트 오류:', error);
-      setError('VIP 상태 업데이트에 실패했습니다.');
-    } finally {
+      // 사용자 목록 새로고침
+      const updatedUsers = await getAllUsersList();
+      setUsers(updatedUsers);
+      
       setShowConfirmModal(false);
-      setSelectedUser(null);
-      setActionType('');
+    } catch (error) {
+      console.error('VIP 처리 오류:', error);
+      alert(`VIP 상태 업데이트 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 
