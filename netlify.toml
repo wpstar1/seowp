@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+  
+[build.environment]
+  NODE_VERSION = "18"
+  REACT_APP_SUPABASE_URL = "https://eerkpvbwuyzszvzuoxvn.supabase.co"
+  REACT_APP_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlcmtwdmJ3dXl6c3p2enVveHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMjc0NDUsImV4cCI6MjA2MTYwMzQ0NX0.g5ebQX7U0IPEmuN5E7o8yOOoc5_kOaqVUq-e7ikKxCg"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

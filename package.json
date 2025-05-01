@@ -6,6 +6,7 @@
   "homepage": "./",
   "dependencies": {
     "@prisma/client": "^4.16.2",
+    "@supabase/supabase-js": "^2.49.4",
     "@vercel/postgres": "^0.10.0",
     "axios": "^1.6.0",
     "bcryptjs": "^3.0.2",
@@ -13,8 +14,6 @@
     "firebase": "^11.6.1",
     "idb": "^8.0.2",
     "moment": "^2.30.1",
-    "mongodb": "^5.8.1",
-    "mongoose": "^8.14.1",
     "node-telegram-bot-api": "^0.66.0",
     "pg": "^8.15.6",
     "react": "^18.2.0",
@@ -27,7 +26,7 @@
     "dev": "vercel dev",
     "start": "react-scripts start",
     "start:prod": "serve -s build",
-    "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build": "react-scripts build",
     "postinstall": "echo 'Skipping prisma generate'",
     "prisma:migrate": "echo 'Skipping prisma migrate'"
   },

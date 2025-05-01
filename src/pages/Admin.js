@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/LocalAuthContext';
+import { useAuth } from '../contexts/SupabaseAuthContext';
 import '../styles/Admin.css';
 
 // 쿼리 파라미터 파싱 함수

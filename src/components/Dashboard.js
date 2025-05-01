@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/LocalAuthContext';
+import { useAuth } from '../contexts/SupabaseAuthContext';
 import moment from 'moment';
 import '../App.css';
 import './Dashboard.css';

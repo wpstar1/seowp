@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './App.css';
-import { useAuth } from './contexts/LocalAuthContext';
+import { useAuth } from './contexts/SupabaseAuthContext';
 import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
 // OpenAI API 키 - 환경 변수로 관리 (배포 시 설정 필요)
 const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "YOUR_API_KEY_HERE";
+
+// 배열에서 무작위 항목을 선택하는 유틸리티 함수
+const getRandomItem = (array) => {
+  return array[Math.floor(Math.random() * array.length)];
+};
 
 function App() {
   // 인증 관련 변수
@@ -35,7 +40,7 @@ function App() {
     if (link.trim() && additionalKeyword.trim()) {
       if (isVip) {
         setAnchorLinks([...anchorLinks, { 
-          id: Math.random().toString(36).substr(2, 9),
+          id: getRandomItem([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).toString(36).substr(2, 9),
           url: link.trim(), 
           text: additionalKeyword.trim() 
         }]);
@@ -71,7 +76,7 @@ function App() {
         
         reader.onload = (event) => {
           const newImage = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: getRandomItem([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).toString(36).substr(2, 9),
             name: file.name,
             dataUrl: event.target.result
           };
@@ -239,7 +244,8 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           
           mockHeadlines = vipHeadlineTemplates.map(headline => {
             // 약간의 변형을 주어 더 자연스럽게
-            const randomSuffix = ['!', '...', '', ' (최신 가이드)', ' - 전문가 분석'].random();
+            const randomSuffixes = ['!', '...', '', ' (최신 가이드)', ' - 전문가 분석'];
+            const randomSuffix = getRandomItem(randomSuffixes);
             return headline + randomSuffix;
           });
         } else {
@@ -256,13 +262,6 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
         // 콘텐츠 유형에 따른 형식 설정 (VIP 회원용 특별 형식 추가)
         let titlePrefix = '';
         let contentFormat = '';
-        
-        // Array.prototype.random 메서드 정의 (없으면)
-        if (!Array.prototype.random) {
-          Array.prototype.random = function() {
-            return this[Math.floor(Math.random() * this.length)];
-          };
-        }
         
         // 일반 템플릿과 VIP 회원용 자연스러운 템플릿
         const templates = {
@@ -302,7 +301,7 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
         
         // 콘텐츠 유형에 맞는 제목 선택
         if (isVip && templates[contentType]) {
-          titlePrefix = templates[contentType].vip.random();
+          titlePrefix = getRandomItem(templates[contentType].vip);
         } else if (templates[contentType]) {
           titlePrefix = templates[contentType].normal;
         } else {
@@ -347,7 +346,7 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
         
         let contentTone = '';
         if (isVip && toneTemplates[styleType]) {
-          contentTone = toneTemplates[styleType].vip.random();
+          contentTone = getRandomItem(toneTemplates[styleType].vip);
         } else if (toneTemplates[styleType]) {
           contentTone = toneTemplates[styleType].normal;
         } else {
@@ -399,57 +398,57 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           
           // 최종 콘텐츠 조합 - 자연스러운 흐름으로
           mockContent = `# ${titlePrefix}\n\n`;
-          mockContent += personalIntros.random() + '\n\n';
+          mockContent += getRandomItem(personalIntros) + '\n\n';
           
           // 이미지 추가 (있는 경우)
           if (images.length > 0) {
-            const randomImageIndex = Math.floor(Math.random() * images.length);
+            const randomImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             mockContent += `![${images[randomImageIndex].name}](${images[randomImageIndex].dataUrl})\n`;
             mockContent += `*제가 직접 촬영한 ${keyword} 관련 이미지*\n\n`;
           }
           
           mockContent += `## 내가 발견한 ${keyword}의 진짜 모습\n\n`;
-          mockContent += midContents.random() + '\n\n';
+          mockContent += getRandomItem(midContents) + '\n\n';
           
           // 앵커 링크 자연스럽게 추가 (있는 경우)
           if (anchorLinks.length > 0) {
-            const randomLinkIndex = Math.floor(Math.random() * anchorLinks.length);
+            const randomLinkIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             const randomLink = anchorLinks[randomLinkIndex];
             mockContent += `얼마 전에 [${randomLink.text}](${randomLink.url})에서 정말 유용한 정보를 발견했어요. 정말 도움이 많이 됐답니다.\n\n`;
           }
           
           // 두 번째 이미지 추가 (있는 경우)
           if (images.length > 1) {
-            const secondImageIndex = 1 % images.length;
+            const secondImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             mockContent += `![${images[secondImageIndex].name}](${images[secondImageIndex].dataUrl})\n`;
             mockContent += `*${keyword}를 활용한 실제 사례*\n\n`;
           }
           
           mockContent += `## 내가 찾은 효과적인 ${keyword} 활용법\n\n`;
-          mockContent += tipContents.random() + '\n\n';
+          mockContent += getRandomItem(tipContents) + '\n\n';
           
           // 추가 앵커 링크 (있는 경우)
           if (anchorLinks.length > 1) {
-            const secondLinkIndex = 1 % anchorLinks.length;
+            const secondLinkIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             const secondLink = anchorLinks[secondLinkIndex];
             mockContent += `참고로 [${secondLink.text}](${secondLink.url})에서 더 자세한 방법을 확인할 수 있어요. 제가 자주 참고하는 사이트입니다.\n\n`;
           }
           
           // 세 번째 이미지 추가 (있는 경우)
           if (images.length > 2) {
-            const thirdImageIndex = 2 % images.length;
+            const thirdImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             mockContent += `![${images[thirdImageIndex].name}](${images[thirdImageIndex].dataUrl})\n`;
             mockContent += `*${keyword} 활용의 놀라운 결과*\n\n`;
           }
           
           mockContent += `## 마치며\n\n`;
-          mockContent += conclusionContents.random() + '\n\n';
+          mockContent += getRandomItem(conclusionContents) + '\n\n';
           
           // 남은 앵커 링크 자연스럽게 추가
           if (anchorLinks.length > 2) {
             mockContent += `### 제가 추천하는 참고 자료\n\n`;
             for (let i = 2; i < Math.min(anchorLinks.length, 5); i++) {
-              const link = anchorLinks[i % anchorLinks.length];
+              const link = anchorLinks[i];
               mockContent += `- [${link.text}](${link.url}) - 정말 유용한 정보가 많아요!\n`;
             }
             mockContent += '\n';
@@ -466,15 +465,14 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           }
           
           // 자연스러운 마무리
-          const randomClosing = [
+          const closings = [
             `이 글이 도움이 되셨다면 좋아요와 공유 부탁드려요! 다음에 더 유익한 정보로 찾아오겠습니다. 🙌`,
             `여러분의 ${keyword} 경험도 댓글로 공유해주세요! 서로 배우며 성장해요. 💪`,
             `다음 글에서는 ${keyword}의 심화 기술에 대해 다룰 예정이니 많은 기대 부탁드립니다! ✨`,
             `더 궁금한 점이 있으시면 언제든 문의해주세요. 아는 한도 내에서 성심성의껏 답변 드리겠습니다! 🙏`
-          ].random();
+          ];
           
-          mockContent += randomClosing;
-          
+          mockContent += getRandomItem(closings);
         } else {
           // 일반 회원용 기본 콘텐츠 (기존 코드 유지)
           // 섹션 배열 생성 (글과 이미지 번갈아 배치)
@@ -586,23 +584,7 @@ ${images.slice(3).map((img, index) =>
           }
           
           // 모든 섹션을 하나의 문자열로 결합
-          let mockContent = contentSections.join('\n');
-          
-          // 콘텐츠 길이 제한 적용
-          if (mockContent.length > contentLength) {
-            // 길이 제한
-            mockContent = mockContent.substring(0, contentLength);
-            
-            // 일반 회원인 경우 제한 메시지 추가
-            if (!isVip) {
-              mockContent += '\n\n... [더 사람같이 쓴 콘텐츠를 생성하려면 VIP 회원으로 업그레이드하세요] ...';
-            }
-          }
-          
-          setHeadlines(mockHeadlines);
-          setResult(mockContent);
-          setIsLoading(false);
-          setShowResult(true);
+          mockContent = contentSections.join('\n');
         }
         
         // 콘텐츠 길이 제한 적용
@@ -612,7 +594,7 @@ ${images.slice(3).map((img, index) =>
           
           // 일반 회원인 경우 제한 메시지 추가
           if (!isVip) {
-            mockContent += '\n\n... [더 긴 콘텐츠를 생성하려면 VIP 회원으로 업그레이드하세요] ...';
+            mockContent += '\n\n... [더 사람같이 쓴 콘텐츠를 생성하려면 VIP 회원으로 업그레이드하세요] ...';
           }
         }
         
@@ -832,7 +814,7 @@ ${images.slice(3).map((img, index) =>
                     value={contentType} 
                     onChange={(e) => setContentType(e.target.value)}
                   >
-                    <option value="블로그,홈페이지">블로그,홈페이지</option>
+                    <option value="블로그">블로그</option>
                     <option value="SNS">SNS</option>
                     <option value="뉴스레터">뉴스레터</option>
                     <option value="보도자료">보도자료</option>
@@ -863,8 +845,8 @@ ${images.slice(3).map((img, index) =>
                   <h3>글에 추가할 링크와 키워드 {!isVip && <span className="vip-only-badge">VIP 전용</span>}</h3>
                   <p className="input-description">링크와 키워드를 함께 입력하면 글 내에 앵커 텍스트 형태로 자연스럽게 삽입되며 백링크 역활을 합니다.</p>
                   
-                  <div className="anchor-input-container">
-                    <div className="anchor-input-group">
+                  <div className="link-inputs-container">
+                    <div className="link-inputs">
                       <input 
                         type="text" 
                         className="link-input" 
@@ -875,7 +857,7 @@ ${images.slice(3).map((img, index) =>
                       <input 
                         type="text" 
                         className="keyword-input-small" 
-                        placeholder="키워드 입력" 
+                        placeholder="노출할 키워드 입력"
                         value={additionalKeyword}
                         onChange={(e) => setAdditionalKeyword(e.target.value)}
                       />

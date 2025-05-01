@@ -216,66 +216,47 @@
 }
 
 .anchor-input-container {
+  display: none; /* 이전 스타일 숨기기 */
+}
+
+.link-inputs-container {
   display: flex;
-  margin-bottom: 15px;
+  flex-direction: column;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.link-inputs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: 10px;
+  margin-bottom: 10px;
 }
 
-.anchor-input-group {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  gap: 8px;
-}
-
-.keyword-input-small {
+.link-input, .keyword-input-small {
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid #ddd;
   border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.add-link-btn {
+  background-color: #4a6bff;
   color: white;
-  font-size: 1rem;
-}
-
-.keyword-input-small::placeholder {
-  color: rgba(0, 0, 0, 0.7);
-  font-weight: 500;
-}
-
-.link-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.link-keyword {
-  font-weight: bold;
-  font-size: 0.95rem;
-  color: #4CAF50;
-  margin-bottom: 4px;
-}
-
-.link-url {
-  font-size: 0.8rem;
-  opacity: 0.8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.link-input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 6px;
-  color: white;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  align-self: flex-start;
 }
 
-.link-input::placeholder {
-  color: rgba(0, 0, 0, 0.7);
-  font-weight: 500;
+.add-link-btn:hover {
+  background-color: #3a5ae8;
 }
 
 /* VIP 배너 */
@@ -1219,24 +1200,47 @@
 }
 
 .anchor-input-container {
+  display: none; /* 이전 스타일 숨기기 */
+}
+
+.link-inputs-container {
   display: flex;
-  margin-bottom: 15px;
+  flex-direction: column;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.link-inputs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: 10px;
+  margin-bottom: 10px;
+}
+
+.link-input, .keyword-input-small {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
 }
 
 .add-link-btn {
-  background-color: #4caf50;
+  background-color: #4a6bff;
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 0 20px;
+  padding: 12px 20px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
+  align-self: flex-start;
 }
 
 .add-link-btn:hover {
-  background-color: #43a047;
+  background-color: #3a5ae8;
 }
 
 .links-list {

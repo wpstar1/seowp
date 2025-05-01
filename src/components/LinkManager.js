@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { saveLinkToDatabase } from '../services/contentService';
-import { useAuth } from '../contexts/LocalAuthContext';
+import { useAuth } from '../contexts/SupabaseAuthContext';
 
 /**
  * 링크 관리 컴포넌트

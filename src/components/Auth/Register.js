@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/LocalAuthContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
 import './Auth.css';
 
 const Register = () => {
@@ -35,8 +35,12 @@ const Register = () => {
       // 로그인 전에 기존 데이터 확인
       console.log('회원가입 시도:', username);
       
-      // 로컬 인증 시스템으로 회원가입 - confirmPassword도 전달
-      const result = await register(username, password, confirmPassword);
+      // 로컬 인증 시스템으로 회원가입
+      const result = await register({
+        username,
+        email: username,  // 이메일로 사용자명 활용
+        password
+      });
       
       if (result.success) {
         console.log('회원가입 성공:', username);

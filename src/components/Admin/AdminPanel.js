@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/LocalAuthContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
 import './AdminPanel.css';
 
 const AdminPanel = () => {

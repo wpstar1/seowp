@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../App.css';
-import { useAuth } from '../contexts/LocalAuthContext';
+import { useAuth } from '../contexts/SupabaseAuthContext';
 import Header from '../components/Header';
 import DatabaseInitializer from '../components/DatabaseInitializer';
 
@@ -28,7 +28,7 @@ function NewHome() {
   // 샘플 이미지 갤러리
   const sampleImages = [
     'https://images.unsplash.com/photo-1661956601349-f61c959a8fd4',
-    'https://images.unsplash.com/photo-1597589827317-4c6d6e0a90bd',
+    'https://images.unsplash.com/photo-1597589827317-4c6d6e0a8fd4',
     'https://images.unsplash.com/photo-1598128558393-70ff21433be0',
     'https://images.unsplash.com/photo-1555066931-4365d14bab8c',
     'https://images.unsplash.com/photo-1517694712202-14dd9538aa97',
@@ -378,7 +378,7 @@ ${links.length > 0 ? '## 참고 링크\n' + links.map(link => `- [참고자료](
       
       <footer className="footer">
         <div className="footer-content">
-          <p>© 2024 Smart Content Creator. All rights reserved.</p>
+          <p> 2024 Smart Content Creator. All rights reserved.</p>
           {isAdmin && (
             <Link to="/admin-dashboard" className="admin-link">관리자 페이지</Link>
           )}

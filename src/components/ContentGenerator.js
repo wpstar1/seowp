@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { addEmojiWithProbability, getRandomEmoji } from '../utils/emojiUtils';
 import { saveGeneratedContent } from '../services/contentService';
-import { useAuth } from '../contexts/LocalAuthContext';
+import { useAuth } from '../contexts/SupabaseAuthContext';
 
 /**
  * 컨텐츠 생성기 컴포넌트
