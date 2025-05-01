@@ -6,7 +6,8 @@ import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
 // 환경 변수로 API 키 관리
-const OPENAI_API_KEY = "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";
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "";
+// API 키는 Vercel 환경 변수에 설정해주세요 (REACT_APP_OPENAI_API_KEY)
 
 // 배열에서 무작위 항목을 선택하는 유틸리티 함수
 const getRandomItem = (array) => {
