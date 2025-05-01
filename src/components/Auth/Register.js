@@ -29,16 +29,21 @@ const Register = () => {
       return;
     }
     
+    // 비밀번호 길이 확인 (6자리 이상)
+    if (password.length < 6) {
+      setError('비밀번호는 6자리 이상이어야 합니다');
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      // 로그인 전에 기존 데이터 확인
+      // 회원가입 시도
       console.log('회원가입 시도:', username);
       
-      // 로컬 인증 시스템으로 회원가입
+      // 회원가입 요청 - 이메일은 백엔드에서 자동 생성
       const result = await register({
         username,
-        email: username,  // 이메일로 사용자명 활용
         password
       });
       
@@ -79,9 +84,12 @@ const Register = () => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="아이디 (3자 이상)"
+              placeholder="아이디 입력"
               required
             />
+            <small className="form-text">
+              영문자, 숫자를 포함한 4~20자 (관리자는 1111)
+            </small>
           </div>
           
           <div className="form-group">
@@ -91,9 +99,12 @@ const Register = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 (4자 이상)"
+              placeholder="비밀번호 입력 (6자 이상)"
               required
             />
+            <small className="form-text">
+              최소 6자 이상으로 입력해 주세요
+            </small>
           </div>
           
           <div className="form-group">
@@ -103,7 +114,7 @@ const Register = () => {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="비밀번호 확인"
+              placeholder="비밀번호 재입력"
               required
             />
           </div>

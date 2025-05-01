@@ -133,137 +133,99 @@ export const AuthProvider = ({ children }) => {
     try {
       setError('');
       
-      if (isSupabaseConnected) {
-        // Supabase로 회원가입
-        const { data, error } = await supabase.auth.signUp({
-          email: userData.email,
-          password: userData.password,
-          options: {
-            data: {
-              username: userData.username
-            }
+      if (!isSupabaseConnected) {
+        throw new Error('Supabase 연결이 필요합니다. 인터넷 연결을 확인해주세요.');
+      }
+
+      // 비밀번호 길이 확인
+      if (userData.password.length < 6) {
+        throw new Error('비밀번호는 6자리 이상이어야 합니다.');
+      }
+      
+      // 사용자명을 이메일 형식으로 변환 (Supabase 요구사항)
+      const autoEmail = `${userData.username}@example.com`;
+      console.log('회원가입 시도:', userData.username, '자동 생성 이메일:', autoEmail);
+      
+      // Supabase로 회원가입
+      const { data, error } = await supabase.auth.signUp({
+        email: autoEmail,
+        password: userData.password,
+        options: {
+          data: {
+            username: userData.username
           }
-        });
-        
-        if (error) {
-          throw new Error(error.message || '회원가입 중 오류가 발생했습니다.');
         }
+      });
+      
+      if (error) {
+        throw new Error(error.message || '회원가입 중 오류가 발생했습니다.');
+      }
+      
+      // 사용자 정보를 users 테이블에도 저장
+      const isAdmin = userData.username === '1111';
+      const vipStatus = userData.username === '1111' ? 'approved' : 'none';
+      const membershipType = userData.username === '1111' ? 'vip' : 'free';
+      
+      console.log('사용자 등록 성공, 사용자 ID:', data.user.id);
+      console.log('users 테이블에 저장 시도:', { username: userData.username, is_admin: isAdmin });
+      
+      // users 테이블에 사용자 정보 저장
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([
+          { 
+            id: data.user.id, // 중요: Auth 시스템의 ID를 users 테이블의 ID로 사용
+            username: userData.username,
+            email: autoEmail, // 자동 생성된 이메일 저장
+            is_admin: isAdmin,
+            vip_status: vipStatus,
+            membership_type: membershipType
+          }
+        ]);
         
-        // 사용자 정보를 users 테이블에도 저장
-        const isAdmin = userData.username === '1111';
-        const vipStatus = userData.username === '1111' ? 'approved' : 'none';
-        const membershipType = userData.username === '1111' ? 'vip' : 'free';
+      if (insertError) {
+        console.error('users 테이블 저장 오류:', insertError);
         
-        console.log('사용자 등록 성공, 사용자 ID:', data.user.id);
-        console.log('users 테이블에 저장 시도:', { username: userData.username, is_admin: isAdmin });
-        
-        // users 테이블에 사용자 정보 저장
-        const { error: insertError } = await supabase
+        // 실패 시 다시 한번 시도 (가능한 충돌 해결)
+        const { error: upsertError } = await supabase
           .from('users')
-          .insert([
+          .upsert([
             { 
-              id: data.user.id, // 중요: Auth 시스템의 ID를 users 테이블의 ID로 사용
+              id: data.user.id,
               username: userData.username,
-              email: userData.email, // 이메일도 저장
+              email: autoEmail,
               is_admin: isAdmin,
               vip_status: vipStatus,
               membership_type: membershipType
             }
           ]);
           
-        if (insertError) {
-          console.error('users 테이블 저장 오류:', insertError);
-          
-          // 실패 시 다시 한번 시도 (가능한 충돌 해결)
-          const { error: upsertError } = await supabase
-            .from('users')
-            .upsert([
-              { 
-                id: data.user.id,
-                username: userData.username,
-                email: userData.email,
-                is_admin: isAdmin,
-                vip_status: vipStatus,
-                membership_type: membershipType
-              }
-            ]);
-            
-          if (upsertError) {
-            console.error('users 테이블 upsert 오류:', upsertError);
-          } else {
-            console.log('users 테이블 upsert 성공');
-          }
+        if (upsertError) {
+          console.error('users 테이블 upsert 오류:', upsertError);
         } else {
-          console.log('users 테이블 저장 성공');
+          console.log('users 테이블 upsert 성공');
         }
-        
-        // 사용자 정보를 기존 앱 형식에 맞게 변환
-        const formattedUser = {
-          username: userData.username,
-          email: userData.email,
-          isAdmin: isAdmin,
-          membershipType: membershipType,
-          vipStatus: vipStatus,
-          createdAt: new Date().toISOString()
-        };
-        
-        setCurrentUser(formattedUser);
-        localStorage.setItem(CURRENT_USER_KEY, formattedUser.username);
-        return { success: true, user: formattedUser };
       } else {
-        // 로컬 스토리지 폴백
-        return registerLocalUser(userData);
-      }
-    } catch (err) {
-      console.error('회원가입 오류:', err);
-      setError(err.message);
-      
-      // Supabase 오류 시 로컬 스토리지 폴백
-      try {
-        const result = await registerLocalUser(userData);
-        return result;
-      } catch (localError) {
-        throw localError;
-      }
-    }
-  };
-
-  // 로컬 스토리지 회원가입 (폴백)
-  const registerLocalUser = async (userData) => {
-    try {
-      const { username, password, email } = userData;
-      
-      // 기존 사용자 확인
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const existingUser = users.find(u => u.username === username);
-      
-      if (existingUser) {
-        throw new Error('이미 존재하는 사용자입니다.');
+        console.log('users 테이블 저장 성공');
       }
       
-      // 새 사용자 생성
-      const newUser = {
-        _id: `user_${Date.now()}`,
-        username,
-        password, // 실제로는 해싱 필요
-        email,
-        createdAt: new Date().toISOString(),
-        isAdmin: username === '1111',
-        membershipType: username === '1111' ? 'vip' : 'free',
-        vipStatus: username === '1111' ? 'approved' : 'none'
+      // 사용자 정보를 기존 앱 형식에 맞게 변환
+      const formattedUser = {
+        username: userData.username,
+        email: autoEmail,
+        isAdmin: isAdmin,
+        membershipType: membershipType,
+        vipStatus: vipStatus,
+        createdAt: new Date().toISOString()
       };
       
-      users.push(newUser);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      
       // 현재 사용자로 설정
-      const { password: _, ...userWithoutPassword } = newUser;
-      setCurrentUser(userWithoutPassword);
-      localStorage.setItem(CURRENT_USER_KEY, username);
+      setCurrentUser(formattedUser);
+      localStorage.setItem(CURRENT_USER_KEY, userData.username);
       
-      return { success: true, user: userWithoutPassword };
+      return { success: true, user: formattedUser };
     } catch (err) {
-      console.error('로컬 회원가입 오류:', err);
+      console.error('회원가입 오류:', err);
       setError(err.message);
       throw err;
     }
@@ -279,21 +241,20 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Supabase 연결이 필요합니다. 인터넷 연결을 확인해주세요.');
       }
       
-      // 1. 먼저 이메일 형식인지 확인
-      const isEmail = username.includes('@');
-      const loginIdentifier = isEmail ? username : `${username}@example.com`;
+      // 자동 이메일 생성 (회원가입과 동일한 로직)
+      const autoEmail = `${username}@example.com`;
       
-      console.log('Supabase 로그인 시도:', loginIdentifier);
+      console.log('Supabase 로그인 시도:', autoEmail);
       
       // Supabase로 로그인
       const { data, error } = await supabase.auth.signInWithPassword({ 
-        email: loginIdentifier,
+        email: autoEmail,
         password 
       });
       
       if (error) {
         console.error('Supabase 로그인 실패:', error.message);
-        throw new Error(error.message || '로그인 중 오류가 발생했습니다.');
+        throw new Error('로그인 정보가 일치하지 않습니다. 사용자명과 비밀번호를 확인해주세요.');
       }
       
       console.log('Supabase 로그인 성공, 데이터:', data);
@@ -316,7 +277,7 @@ export const AuthProvider = ({ children }) => {
         // 사용자 테이블에서 데이터를 가져온 경우
         formattedUser = {
           username: userData.username,
-          email: data.user.email,
+          email: userData.email || autoEmail,
           isAdmin: userData.is_admin || username === '1111',
           membershipType: userData.membership_type || (username === '1111' ? 'vip' : 'free'),
           vipStatus: userData.vip_status || (username === '1111' ? 'approved' : 'none'),
@@ -326,7 +287,7 @@ export const AuthProvider = ({ children }) => {
         // 기본 사용자 데이터 구성
         formattedUser = {
           username: username,
-          email: data.user.email,
+          email: autoEmail,
           isAdmin: username === '1111',
           membershipType: username === '1111' ? 'vip' : 'free',
           vipStatus: username === '1111' ? 'approved' : 'none',
@@ -340,7 +301,7 @@ export const AuthProvider = ({ children }) => {
             { 
               id: data.user.id,
               username: username,
-              email: data.user.email,
+              email: autoEmail,
               is_admin: username === '1111',
               vip_status: username === '1111' ? 'approved' : 'none',
               membership_type: username === '1111' ? 'vip' : 'free'
@@ -360,7 +321,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('로그인 오류:', err);
       setError(err.message);
-      throw err; // 로컬 폴백 없이 오류를 바로 전달
+      throw err;
     }
   };
 
