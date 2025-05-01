@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/SupabaseAuthContext';
 import './AdminPanel.css';
@@ -11,32 +11,48 @@ const AdminPanel = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionType, setActionType] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // 관리자가 아니면 접근 불가
   const isAdmin = currentUser && (currentUser.isAdmin || currentUser.username === '1111');
+  
+  // 사용자 목록 새로고침
+  const refreshUserList = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
   
   // 사용자 목록 로드
   useEffect(() => {
     const loadUsers = async () => {
       try {
         setLoading(true);
+        setError('');
+        console.log('사용자 목록 로드 시도...');
+        
         const result = await getAllUsersList();
         
-        if (result) {
+        console.log('받은 사용자 목록:', result);
+        
+        if (result && Array.isArray(result)) {
           setUsers(result);
+          console.log('사용자 목록 설정 성공:', result.length, '명의 사용자');
         } else {
+          console.error('유효하지 않은 사용자 목록:', result);
           setError('사용자 목록을 불러오는데 실패했습니다.');
         }
       } catch (error) {
         console.error('사용자 목록 로드 오류:', error);
-        setError('사용자 목록을 불러오는데 실패했습니다.');
+        setError('사용자 목록을 불러오는데 실패했습니다: ' + error.message);
       } finally {
         setLoading(false);
       }
     };
 
-    loadUsers();
-  }, [getAllUsersList]);
+    // 관리자인 경우에만 로드
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [getAllUsersList, isAdmin, refreshTrigger]);
 
   // VIP 승인/거부 팝업 표시
   const handleVipAction = (user, action) => {
@@ -47,151 +63,136 @@ const AdminPanel = () => {
 
   // VIP 상태 업데이트 처리
   const confirmVipAction = async () => {
+    if (!selectedUser) return;
+    
     try {
       const approve = actionType === 'approve';
+      console.log(`${selectedUser.username} 사용자의 VIP 요청 ${approve ? '승인' : '거부'} 시도...`);
+      
       await handleVipRequest(selectedUser.username, approve ? 'approve' : 'reject');
+      console.log('VIP 상태 업데이트 성공');
       
       // 사용자 목록 새로고침
-      const updatedUsers = await getAllUsersList();
-      setUsers(updatedUsers);
+      refreshUserList();
       
+      // 모달 닫기
       setShowConfirmModal(false);
+      setSelectedUser(null);
+      
+      // 성공 메시지
+      alert(`${selectedUser.username} 사용자의 VIP 신청이 ${approve ? '승인' : '거부'}되었습니다.`);
     } catch (error) {
       console.error('VIP 처리 오류:', error);
       alert(`VIP 상태 업데이트 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 
-  // VIP 상태에 따른 배지 렌더링
-  const renderVipBadge = (user) => {
-    if (user.vipStatus === 'approved' || user.membershipType === 'vip') {
-      return <span className="badge vip-badge">VIP</span>;
-    } else if (user.vipStatus === 'pending') {
-      return <span className="badge pending-badge">승인 대기중</span>;
-    } else if (user.vipStatus === 'rejected') {
-      return <span className="badge rejected-badge">거부됨</span>;
-    }
-    return null;
-  };
-
-  // VIP 만료일 표시
-  const renderExpiryDate = (user) => {
-    if ((user.vipStatus === 'approved' || user.membershipType === 'vip') && user.membershipExpiry) {
-      const expiryDate = new Date(user.membershipExpiry);
-      const now = new Date();
-      const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-      
-      return (
-        <span className="expiry-date">
-          만료: {expiryDate.toLocaleDateString()} ({daysLeft}일 남음)
-        </span>
-      );
-    }
-    return null;
-  };
-
   // 관리자가 아니면 홈으로 리다이렉트
   if (!isAdmin) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return (
     <div className="admin-panel">
       <h1>관리자 페이지</h1>
-      <p className="admin-subtitle">VIP 회원 신청을 관리하고 사용자 정보를 확인할 수 있습니다.</p>
       
-      {error && <div className="error-message">{error}</div>}
+      <div className="admin-controls">
+        <button onClick={refreshUserList} className="refresh-btn">
+          사용자 목록 새로고침
+        </button>
+      </div>
+      
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={refreshUserList}>다시 시도</button>
+        </div>
+      )}
       
       {loading ? (
-        <div className="loading-spinner"></div>
+        <div className="loading">데이터를 불러오는 중...</div>
       ) : (
-        <div className="users-container">
-          <h2>사용자 목록</h2>
+        <div className="users-list">
+          <h2>사용자 목록 ({users.length}명)</h2>
           
-          <div className="users-table-container">
-            <table className="users-table">
+          {users.length === 0 ? (
+            <p className="no-users">등록된 사용자가 없습니다.</p>
+          ) : (
+            <table>
               <thead>
                 <tr>
-                  <th>아이디</th>
+                  <th>사용자명</th>
+                  <th>이메일</th>
                   <th>상태</th>
-                  <th>가입일</th>
-                  <th>VIP 신청</th>
+                  <th>생성일</th>
                   <th>관리</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
-                  <tr key={user.username} className={user.vipStatus === 'pending' ? 'pending-row' : ''}>
-                    <td>{user.username}</td>
-                    <td>{renderVipBadge(user)} {renderExpiryDate(user)}</td>
-                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                {users.map((user, index) => (
+                  <tr key={index} className={user.vipStatus === 'pending' ? 'pending-row' : ''}>
                     <td>
-                      {user.vipStatus === 'pending' ? (
-                        <span className="vip-request-date">
-                          {new Date(user.updatedAt).toLocaleDateString()}
-                        </span>
-                      ) : user.vipStatus === 'none' ? (
-                        <span className="no-request">-</span>
+                      {user.username}
+                      {user.isAdmin && <span className="admin-badge">관리자</span>}
+                    </td>
+                    <td>{user.email || '미등록'}</td>
+                    <td>
+                      {user.vipStatus === 'approved' ? (
+                        <span className="vip-badge">VIP</span>
+                      ) : user.vipStatus === 'pending' ? (
+                        <span className="pending-badge">VIP 신청중</span>
                       ) : (
-                        <span className="vip-request-date">
-                          {new Date(user.updatedAt).toLocaleDateString()}
-                        </span>
+                        <span className="free-badge">일반</span>
                       )}
                     </td>
+                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
                       {user.vipStatus === 'pending' && (
-                        <div className="action-buttons">
-                          <button 
-                            className="approve-btn"
+                        <div className="vip-actions">
+                          <button
                             onClick={() => handleVipAction(user, 'approve')}
+                            className="approve-btn"
                           >
                             승인
                           </button>
-                          <button 
-                            className="reject-btn"
+                          <button
                             onClick={() => handleVipAction(user, 'reject')}
+                            className="reject-btn"
                           >
                             거부
                           </button>
                         </div>
-                      )}
-                      {user.vipStatus === 'approved' && (
-                        <button 
-                          className="cancel-btn"
-                          onClick={() => handleVipAction(user, 'reject')}
-                        >
-                          VIP 취소
-                        </button>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          )}
         </div>
       )}
       
       {/* 확인 모달 */}
       {showConfirmModal && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <h2>확인</h2>
+        <div className="confirm-modal">
+          <div className="modal-content">
+            <h3>VIP 신청 {actionType === 'approve' ? '승인' : '거부'}</h3>
             <p>
-              {actionType === 'approve' 
-                ? `${selectedUser.username} 사용자의 VIP 신청을 승인하시겠습니까?` 
-                : `${selectedUser.username} 사용자의 VIP 상태를 취소하시겠습니까?`
-              }
+              <strong>{selectedUser.username}</strong> 사용자의 VIP 신청을
+              {actionType === 'approve' ? ' 승인' : ' 거부'}하시겠습니까?
             </p>
             <div className="modal-buttons">
-              <button className="cancel-btn" onClick={() => setShowConfirmModal(false)}>
-                취소
+              <button onClick={confirmVipAction} className="confirm-btn">
+                확인
               </button>
-              <button 
-                className={actionType === 'approve' ? 'approve-btn' : 'reject-btn'}
-                onClick={confirmVipAction}
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setSelectedUser(null);
+                }}
+                className="cancel-btn"
               >
-                {actionType === 'approve' ? '승인' : '취소'}
+                취소
               </button>
             </div>
           </div>

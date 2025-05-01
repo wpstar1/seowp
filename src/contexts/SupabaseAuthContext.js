@@ -154,19 +154,47 @@ export const AuthProvider = ({ children }) => {
         const vipStatus = userData.username === '1111' ? 'approved' : 'none';
         const membershipType = userData.username === '1111' ? 'vip' : 'free';
         
+        console.log('사용자 등록 성공, 사용자 ID:', data.user.id);
+        console.log('users 테이블에 저장 시도:', { username: userData.username, is_admin: isAdmin });
+        
         // users 테이블에 사용자 정보 저장
         const { error: insertError } = await supabase
           .from('users')
           .insert([
             { 
+              id: data.user.id, // 중요: Auth 시스템의 ID를 users 테이블의 ID로 사용
               username: userData.username,
+              email: userData.email, // 이메일도 저장
               is_admin: isAdmin,
-              vip_status: vipStatus
+              vip_status: vipStatus,
+              membership_type: membershipType
             }
           ]);
           
         if (insertError) {
           console.error('users 테이블 저장 오류:', insertError);
+          
+          // 실패 시 다시 한번 시도 (가능한 충돌 해결)
+          const { error: upsertError } = await supabase
+            .from('users')
+            .upsert([
+              { 
+                id: data.user.id,
+                username: userData.username,
+                email: userData.email,
+                is_admin: isAdmin,
+                vip_status: vipStatus,
+                membership_type: membershipType
+              }
+            ]);
+            
+          if (upsertError) {
+            console.error('users 테이블 upsert 오류:', upsertError);
+          } else {
+            console.log('users 테이블 upsert 성공');
+          }
+        } else {
+          console.log('users 테이블 저장 성공');
         }
         
         // 사용자 정보를 기존 앱 형식에 맞게 변환
@@ -511,28 +539,62 @@ export const AuthProvider = ({ children }) => {
   // 모든 사용자 가져오기 (관리자 전용)
   const getAllUsersList = async () => {
     try {
-      if (!currentUser || !currentUser.isAdmin) {
+      if (!currentUser || (!(currentUser.isAdmin || currentUser.username === '1111'))) {
+        console.log('관리자 권한 확인:', currentUser);
         throw new Error('관리자 권한이 필요합니다.');
       }
       
       if (isSupabaseConnected) {
         // Supabase에서 사용자 목록 가져오기
+        console.log('Supabase에서 사용자 목록 가져오기 시도');
+        
+        // Auth 사용자 목록 가져오기 시도
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        console.log('Auth 사용자 목록:', authUsers);
+        
+        if (authError) {
+          console.error('Auth 사용자 목록 조회 오류:', authError);
+        }
+        
+        // users 테이블에서 사용자 정보 가져오기
         const { data, error } = await supabase.from('users').select('*');
         
         if (error) {
+          console.error('Supabase 사용자 조회 오류:', error);
           throw new Error(error.message || '사용자 목록을 가져오는 중 오류가 발생했습니다.');
         }
+        
+        console.log('Supabase에서 조회된 사용자:', data);
         
         // Supabase 데이터를 앱 형식에 맞게 변환
         const formattedUsers = data.map(user => ({
           username: user.username,
-          email: user.email,
-          isAdmin: user.is_admin,
-          membershipType: user.membership_type,
-          vipStatus: user.vip_status,
-          vipExpiry: user.vip_expiry,
-          createdAt: user.created_at
+          email: user.email || '',
+          isAdmin: user.is_admin || user.username === '1111',
+          membershipType: user.membership_type || 'free',
+          vipStatus: user.vip_status || 'none',
+          vipExpiry: user.vip_expiry || null,
+          createdAt: user.created_at || new Date().toISOString()
         }));
+        
+        // 이미 있는 사용자 목록에 없는 경우 로컬 스토리지에서 추가 시도
+        const localUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        const existingUsernames = formattedUsers.map(u => u.username);
+        
+        for (const localUser of localUsers) {
+          if (!existingUsernames.includes(localUser.username)) {
+            console.log('로컬에만 있는 사용자 추가:', localUser.username);
+            formattedUsers.push({
+              username: localUser.username,
+              email: localUser.email || '',
+              isAdmin: localUser.isAdmin || localUser.username === '1111',
+              membershipType: localUser.membershipType || 'free',
+              vipStatus: localUser.vipStatus || 'none',
+              vipExpiry: localUser.vipExpiry || null,
+              createdAt: localUser.createdAt || new Date().toISOString()
+            });
+          }
+        }
         
         return formattedUsers;
       } else {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/SupabaseAuthContext';
@@ -12,6 +12,9 @@ function ContentCreator() {
   const { userProfile, checkAndUpdateUsage, incrementUsage } = useAuth();
   const navigate = useNavigate();
 
+  // 결과 섹션에 대한 ref 추가
+  const resultSectionRef = useRef(null);
+
   // 상태 관리
   const [keyword, setKeyword] = useState('');
   const [link, setLink] = useState('');
@@ -24,6 +27,8 @@ function ContentCreator() {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [convertedLinks, setConvertedLinks] = useState([]);
   const [usageExceeded, setUsageExceeded] = useState(false);
+  // 확인 모달 상태 추가
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // 컴포넌트 마운트 시 사용량 확인
   useEffect(() => {
@@ -96,8 +101,21 @@ function ContentCreator() {
     }
   };
 
+  // 콘텐츠 생성 버튼 클릭 핸들러 추가
+  const handleGenerateClick = () => {
+    if (!keyword) {
+      toast.warning("키워드를 입력해주세요.");
+      return;
+    }
+    // 확인 모달 표시
+    setShowConfirmModal(true);
+  };
+
   // 콘텐츠 생성 함수
   const generateContent = async () => {
+    // 모달 닫기
+    setShowConfirmModal(false);
+    
     // 사용량 확인
     const canUse = await checkAndUpdateUsage();
     if (!canUse) {
@@ -212,6 +230,13 @@ function ContentCreator() {
       
       // 성공 메시지
       toast.success("콘텐츠가 성공적으로 생성되었습니다!");
+      
+      // 약간의 지연 후 결과 섹션으로 스크롤
+      setTimeout(() => {
+        if (resultSectionRef.current) {
+          resultSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 300);
     } catch (error) {
       console.error("콘텐츠 생성 중 오류 발생:", error);
       toast.error("콘텐츠 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -328,6 +353,23 @@ function ContentCreator() {
           <div className="loading-content">
             <div className="spinner"></div>
             <p className="loading-message">{loadingMessage}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* 확인 모달 */}
+      {showConfirmModal && (
+        <div className="confirm-modal">
+          <div className="modal-content">
+            <h3>컨텐츠를 생성하시겠습니까?</h3>
+            <div className="modal-buttons">
+              <button className="cancel-btn" onClick={() => setShowConfirmModal(false)}>
+                아니오
+              </button>
+              <button className="confirm-btn" onClick={generateContent}>
+                예
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -596,14 +638,14 @@ function ContentCreator() {
           
           <button 
             className="generate-button" 
-            onClick={generateContent}
+            onClick={handleGenerateClick}
             disabled={isLoading || usageExceeded}
           >
             {isLoading ? '생성 중...' : '콘텐츠 생성하기'}
           </button>
 
           {result && (
-            <div className="result-section">
+            <div className="result-section" ref={resultSectionRef}>
               <h2>생성된 콘텐츠</h2>
               <div className="action-buttons">
                 <button className="copy-button" onClick={handleCopyContent}>
