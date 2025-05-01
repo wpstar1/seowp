@@ -145,9 +145,16 @@ const AdminPanel = () => {
                         <span className="free-badge">일반</span>
                       )}
                     </td>
-                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
-                      {user.vipStatus === 'pending' && (
+                      {user.createdAt ? 
+                        (new Date(user.createdAt).toString() !== 'Invalid Date' ? 
+                          new Date(user.createdAt).toLocaleDateString() : 
+                          '날짜 없음'
+                        ) : '날짜 없음'}
+                    </td>
+                    <td>
+                      {/* 관리자만 볼 수 있는 VIP 승인 버튼 */}
+                      {isAdmin && user.vipStatus !== 'approved' && !user.isAdmin && (
                         <div className="vip-actions">
                           <button
                             onClick={() => handleVipAction(user, 'approve')}
@@ -155,12 +162,14 @@ const AdminPanel = () => {
                           >
                             승인
                           </button>
-                          <button
-                            onClick={() => handleVipAction(user, 'reject')}
-                            className="reject-btn"
-                          >
-                            거부
-                          </button>
+                          {user.vipStatus === 'pending' && (
+                            <button
+                              onClick={() => handleVipAction(user, 'reject')}
+                              className="reject-btn"
+                            >
+                              거부
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

@@ -471,64 +471,50 @@ export const AuthProvider = ({ children }) => {
   const handleVipRequest = async (username, action) => {
     try {
       if (!currentUser || !currentUser.isAdmin) {
-        throw new Error('관리자만 VIP 요청을 처리할 수 있습니다.');
+        throw new Error('관리자 권한이 필요합니다.');
       }
       
+      // 사용자 정보 조회
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (userError || !user) {
+        throw new Error('사용자를 찾을 수 없습니다.');
+      }
+      
+      // 상태와 회원 유형 설정
       const vipStatus = action === 'approve' ? 'approved' : 'rejected';
       const membershipType = action === 'approve' ? 'vip' : 'free';
       
-      // VIP 만료일 (승인 시 현재 날짜로부터 30일)
+      // 만료일 설정 (승인 시 30일 후)
       const vipExpiry = action === 'approve' 
-        ? moment().add(30, 'days').toISOString()
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
         : null;
       
-      if (isSupabaseConnected) {
-        // Supabase로 업데이트
-        const { data, error } = await supabase
-          .from('users')
-          .update({ 
-            vip_status: vipStatus, 
-            membership_type: membershipType,
-            vip_expiry: vipExpiry
-          })
-          .eq('username', username)
-          .select();
-        
-        if (error) {
-          throw new Error(error.message || 'VIP 요청 처리 중 오류가 발생했습니다.');
-        }
+      console.log(`VIP 요청 처리: ${username}, 액션: ${action}, 상태: ${vipStatus}, 만료일: ${vipExpiry}`);
+      
+      // 사용자 정보 업데이트
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          vip_status: vipStatus,
+          membership_type: membershipType,
+          vip_expiry: vipExpiry
+        })
+        .eq('username', username);
+      
+      if (updateError) {
+        console.error('VIP 상태 업데이트 오류:', updateError);
+        throw new Error(updateError.message || 'VIP 상태 업데이트 중 오류가 발생했습니다.');
       }
       
-      // 로컬 스토리지 업데이트 (폴백 및 동기화)
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const index = users.findIndex(u => u.username === username);
-      
-      if (index !== -1) {
-        users[index] = {
-          ...users[index],
-          vipStatus,
-          membershipType,
-          vipExpiry
-        };
-        
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      }
-      
-      // VIP 승인 사용자 목록 업데이트
-      if (action === 'approve') {
-        const approvedUsers = JSON.parse(localStorage.getItem(VIP_APPROVED_USERS_KEY) || '[]');
-        
-        if (!approvedUsers.includes(username)) {
-          approvedUsers.push(username);
-          localStorage.setItem(VIP_APPROVED_USERS_KEY, JSON.stringify(approvedUsers));
-        }
-      }
-      
-      return { success: true };
-    } catch (err) {
-      console.error('VIP 요청 처리 오류:', err);
-      setError(err.message);
-      throw err;
+      return true;
+    } catch (error) {
+      console.error('VIP 요청 처리 오류:', error);
+      throw error;
     }
   };
 
