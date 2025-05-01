@@ -273,71 +273,94 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       setError('');
+      console.log('로그인 시도:', username);
       
-      if (isSupabaseConnected) {
-        // Supabase로 로그인
-        const { data, error } = await supabase.auth.signInWithPassword({ 
-          email: username, // username으로 이메일 필드를 처리
-          password 
-        });
-        
-        if (error) {
-          throw new Error(error.message || '로그인 중 오류가 발생했습니다.');
-        }
-        
-        // 사용자 정보를 기존 앱 형식에 맞게 변환
-        const formattedUser = {
-          username: data.user.username || username,
+      if (!isSupabaseConnected) {
+        throw new Error('Supabase 연결이 필요합니다. 인터넷 연결을 확인해주세요.');
+      }
+      
+      // 1. 먼저 이메일 형식인지 확인
+      const isEmail = username.includes('@');
+      const loginIdentifier = isEmail ? username : `${username}@example.com`;
+      
+      console.log('Supabase 로그인 시도:', loginIdentifier);
+      
+      // Supabase로 로그인
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email: loginIdentifier,
+        password 
+      });
+      
+      if (error) {
+        console.error('Supabase 로그인 실패:', error.message);
+        throw new Error(error.message || '로그인 중 오류가 발생했습니다.');
+      }
+      
+      console.log('Supabase 로그인 성공, 데이터:', data);
+      
+      // 사용자 정보 가져오기
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('사용자 데이터 조회 실패:', userError);
+      }
+      
+      // 사용자 데이터 구성
+      let formattedUser;
+      
+      if (userData) {
+        // 사용자 테이블에서 데이터를 가져온 경우
+        formattedUser = {
+          username: userData.username,
           email: data.user.email,
-          isAdmin: data.user.is_admin,
-          membershipType: data.user.membership_type,
-          vipStatus: data.user.vip_status,
-          vipExpiry: data.user.vip_expiry,
+          isAdmin: userData.is_admin || username === '1111',
+          membershipType: userData.membership_type || (username === '1111' ? 'vip' : 'free'),
+          vipStatus: userData.vip_status || (username === '1111' ? 'approved' : 'none'),
+          createdAt: userData.created_at || data.user.created_at
+        };
+      } else {
+        // 기본 사용자 데이터 구성
+        formattedUser = {
+          username: username,
+          email: data.user.email,
+          isAdmin: username === '1111',
+          membershipType: username === '1111' ? 'vip' : 'free',
+          vipStatus: username === '1111' ? 'approved' : 'none',
           createdAt: data.user.created_at
         };
         
-        setCurrentUser(formattedUser);
-        localStorage.setItem(CURRENT_USER_KEY, formattedUser.username);
-        return { success: true, user: formattedUser };
-      } else {
-        // 로컬 스토리지 폴백
-        return loginLocalUser(username, password);
+        // users 테이블에 사용자 정보 저장 (없는 경우)
+        const { error: insertError } = await supabase
+          .from('users')
+          .upsert([
+            { 
+              id: data.user.id,
+              username: username,
+              email: data.user.email,
+              is_admin: username === '1111',
+              vip_status: username === '1111' ? 'approved' : 'none',
+              membership_type: username === '1111' ? 'vip' : 'free'
+            }
+          ]);
+          
+        if (insertError) {
+          console.error('로그인 후 사용자 데이터 저장 실패:', insertError);
+        }
       }
+      
+      console.log('로그인 성공, 사용자 정보:', formattedUser);
+      
+      setCurrentUser(formattedUser);
+      localStorage.setItem(CURRENT_USER_KEY, formattedUser.username);
+      return { success: true, user: formattedUser };
     } catch (err) {
       console.error('로그인 오류:', err);
       setError(err.message);
-      
-      // Supabase 오류 시 로컬 스토리지 폴백
-      try {
-        const result = await loginLocalUser(username, password);
-        return result;
-      } catch (localError) {
-        throw localError;
-      }
-    }
-  };
-
-  // 로컬 스토리지 로그인 (폴백)
-  const loginLocalUser = async (username, password) => {
-    try {
-      // 사용자 확인
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const user = users.find(u => u.username === username && u.password === password);
-      
-      if (!user) {
-        throw new Error('사용자명 또는 비밀번호가 일치하지 않습니다.');
-      }
-      
-      // 현재 사용자로 설정
-      const { password: _, ...userWithoutPassword } = user;
-      setCurrentUser(userWithoutPassword);
-      localStorage.setItem(CURRENT_USER_KEY, username);
-      
-      return { success: true, user: userWithoutPassword };
-    } catch (err) {
-      console.error('로컬 로그인 오류:', err);
-      setError(err.message);
-      throw err;
+      throw err; // 로컬 폴백 없이 오류를 바로 전달
     }
   };
 
