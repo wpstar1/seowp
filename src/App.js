@@ -34,7 +34,9 @@ function App() {
   const [images, setImages] = useState([]);
   const [additionalKeyword, setAdditionalKeyword] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [progress, setProgress] = useState(0); // 진행률 상태 추가
   const fileInputRef = useRef(null);
+  const resultRef = useRef(null); // 결과 영역에 대한 참조 추가
   
   // 링크와 키워드 함께 추가 함수
   const addAnchorLink = () => {
@@ -108,6 +110,7 @@ function App() {
     }
     
     setIsLoading(true);
+    setProgress(0); // 진행률 초기화
     setShowResult(false);
     
     try {
@@ -115,6 +118,14 @@ function App() {
         // VIP 회원용 OpenAI API 호출
         try {
           console.log("VIP 회원용 GPT 콘텐츠 생성 시작");
+          
+          // 진행률 시뮬레이션 시작
+          const progressInterval = setInterval(() => {
+            setProgress(prev => {
+              // 90%까지만 증가시키고, 실제 완료는 API 응답 후에 100%로 설정
+              return prev < 90 ? prev + 5 : prev;
+            });
+          }, 500);
           
           // 제목 생성을 위한 프롬프트
           const headlinePrompt = `
@@ -198,6 +209,19 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           setResult(contentText);
           setShowResult(true);
           setIsLoading(false);
+          setProgress(100); // 진행률 100%로 설정
+          clearInterval(progressInterval); // 인터벌 정리
+          
+          // 잠시 후 로딩 상태 및 진행률 표시 제거
+          setTimeout(() => {
+            setIsLoading(false);
+            setProgress(0);
+          }, 500);
+          
+          // 콘텐츠 생성 후 결과 영역으로 자동 스크롤
+          setTimeout(() => {
+            resultRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
           
         } catch (apiError) {
           console.error('GPT API 호출 중 오류:', apiError);
@@ -225,9 +249,18 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
     }
     
     setIsLoading(true);
+    setProgress(0); // 진행률 초기화
     setShowResult(false);
     
     try {
+      // 진행률 시뮬레이션 시작
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          // 90%까지만 증가시키고, 실제 완료는 응답 후에 100%로 설정
+          return prev < 90 ? prev + 10 : prev;
+        });
+      }, 300);
+      
       // 목업 데이터 생성
       setTimeout(() => {
         // VIP 회원과 일반 회원을 위한 다른 스타일의 제목 생성
@@ -614,6 +647,19 @@ ${images.slice(3).map((img, index) =>
         setResult(mockContent);
         setIsLoading(false);
         setShowResult(true);
+        setProgress(100); // 진행률 100%로 설정
+        clearInterval(progressInterval); // 인터벌 정리
+        
+        // 잠시 후 진행률 표시 제거
+        setTimeout(() => {
+          setProgress(0);
+        }, 500);
+        
+        // 콘텐츠 생성 후 결과 영역으로 자동 스크롤
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        
       }, 2000);
       
     } catch (error) {
@@ -964,7 +1010,7 @@ ${images.slice(3).map((img, index) =>
         </section>
         
         {showResult && (
-          <section className="result-section">
+          <section className="result-section" ref={resultRef}>
             <div className="result-container">
               <div className="headlines-container">
                 <h2>추천 제목</h2>
@@ -1018,6 +1064,20 @@ ${images.slice(3).map((img, index) =>
           </section>
         )}
       </main>
+      
+      {/* 로딩 상태 및 진행률 표시 */}
+      {isLoading && (
+        <div className="loading-overlay">
+          <div className="loading-popup">
+            <div className="spinner"></div>
+            <div className="progress-container">
+              <div className="progress-bar" style={{ width: `${progress}%` }}></div>
+            </div>
+            <div className="progress-text">{progress}% 완료</div>
+            <p>콘텐츠를 생성하는 중입니다...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

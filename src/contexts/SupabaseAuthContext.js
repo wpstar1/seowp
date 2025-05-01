@@ -532,91 +532,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 모든 사용자 가져오기 (관리자 전용)
+  // 모든 사용자 목록 가져오기
   const getAllUsersList = async () => {
     try {
-      if (!currentUser || (!(currentUser.isAdmin || currentUser.username === '1111'))) {
-        console.log('관리자 권한 확인:', currentUser);
-        throw new Error('관리자 권한이 필요합니다.');
+      // users 테이블에서만 사용자 정보 가져오기
+      const { data, error } = await supabase.from('users').select('*');
+      
+      if (error) {
+        console.error('Supabase 사용자 조회 오류:', error);
+        throw new Error(error.message || '사용자 목록을 가져오는 중 오류가 발생했습니다.');
       }
       
-      if (isSupabaseConnected) {
-        // Supabase에서 사용자 목록 가져오기
-        console.log('Supabase에서 사용자 목록 가져오기 시도');
-        
-        // Auth 사용자 목록 가져오기 시도
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-        console.log('Auth 사용자 목록:', authUsers);
-        
-        if (authError) {
-          console.error('Auth 사용자 목록 조회 오류:', authError);
-        }
-        
-        // users 테이블에서 사용자 정보 가져오기
-        const { data, error } = await supabase.from('users').select('*');
-        
-        if (error) {
-          console.error('Supabase 사용자 조회 오류:', error);
-          throw new Error(error.message || '사용자 목록을 가져오는 중 오류가 발생했습니다.');
-        }
-        
-        console.log('Supabase에서 조회된 사용자:', data);
-        
-        // Supabase 데이터를 앱 형식에 맞게 변환
-        const formattedUsers = data.map(user => ({
-          id: user.id,
-          username: user.username,
-          email: user.email || '',
-          isAdmin: user.is_admin || user.username === '1111',
-          membershipType: user.membership_type || 'free',
-          vipStatus: user.vip_status || 'none',
-          vipExpiry: user.vip_expiry || null,
-          createdAt: user.created_at || new Date().toISOString()
-        }));
-        
-        // 이미 있는 사용자 목록에 없는 경우 로컬 스토리지에서 추가 시도
-        const localUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-        const existingUsernames = formattedUsers.map(u => u.username);
-        
-        for (const localUser of localUsers) {
-          if (!existingUsernames.includes(localUser.username)) {
-            console.log('로컬에만 있는 사용자 추가:', localUser.username);
-            formattedUsers.push({
-              id: localUser.id,
-              username: localUser.username,
-              email: localUser.email || '',
-              isAdmin: localUser.isAdmin || localUser.username === '1111',
-              membershipType: localUser.membershipType || 'free',
-              vipStatus: localUser.vipStatus || 'none',
-              vipExpiry: localUser.vipExpiry || null,
-              createdAt: localUser.createdAt || new Date().toISOString()
-            });
-          }
-        }
-        
-        return formattedUsers;
-      } else {
-        // 로컬 스토리지에서 사용자 목록 가져오기
-        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-        return users.map(user => {
-          const { password, ...userWithoutPassword } = user;
-          return userWithoutPassword;
-        });
-      }
-    } catch (err) {
-      console.error('사용자 목록 가져오기 오류:', err);
-      
-      // 로컬 스토리지 폴백
-      try {
-        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-        return users.map(user => {
-          const { password, ...userWithoutPassword } = user;
-          return userWithoutPassword;
-        });
-      } catch (localError) {
-        console.error('로컬 스토리지에서 사용자 목록 가져오기 오류:', localError);
-        return [];
-      }
+      return data || [];
+    } catch (error) {
+      console.error('사용자 목록 가져오기 오류:', error);
+      throw error;
     }
   };
 
