@@ -180,6 +180,67 @@
   padding: 0;
 }
 
+/* 앵커 링크 스타일 개선 */
+.links-list {
+  margin-top: 15px;
+  list-style: none;
+  padding: 0;
+}
+
+.link-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.link-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.link-keyword {
+  font-weight: 600;
+  font-size: 15px;
+  color: #4a6bff;
+  margin-bottom: 5px;
+}
+
+.link-url {
+  font-size: 13px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  border-left: 3px solid #4a6bff;
+}
+
+.remove-link-btn {
+  background: none;
+  border: none;
+  color: #ff4d4d;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 5px;
+  margin-left: 10px;
+}
+
+.remove-link-btn:hover {
+  color: #e60000;
+}
+
+/* 이전 스타일 제거 (중복) */
+/*
 .link-item {
   display: flex;
   align-items: center;
@@ -207,6 +268,7 @@
 .remove-link-btn:hover {
   opacity: 1;
 }
+*/
 
 /* 앵커 텍스트 관련 스타일 */
 .input-description {

@@ -979,7 +979,7 @@ ${images.slice(3).map((img, index) =>
                         <li key={item.id} className="link-item">
                           <div className="link-content">
                             <span className="link-keyword">{item.text}</span>
-                            <span className="link-url">{item.url}</span>
+                            <span className="link-url">→ {item.url}</span>
                           </div>
                           <button 
                             className="remove-link-btn"
