@@ -135,16 +135,16 @@ const AdminPanel = () => {
               </thead>
               <tbody>
                 {users.map((user, index) => (
-                  <tr key={index} className={user.vipStatus === 'pending' ? 'pending-row' : ''}>
+                  <tr key={index} className={user.vip_status === 'pending' ? 'pending-row' : ''}>
                     <td>
                       {user.username}
                       {user.isAdmin && <span className="admin-badge">관리자</span>}
                     </td>
                     <td>{user.email || '미등록'}</td>
                     <td>
-                      {user.vipStatus === 'approved' ? (
+                      {user.vip_status === 'approved' ? (
                         <span className="vip-badge">VIP</span>
-                      ) : user.vipStatus === 'pending' ? (
+                      ) : user.vip_status === 'pending' ? (
                         <span className="pending-badge">VIP 신청중</span>
                       ) : (
                         <span className="free-badge">일반</span>
@@ -159,7 +159,7 @@ const AdminPanel = () => {
                     </td>
                     <td>
                       {/* 관리자만 볼 수 있는 VIP 승인 버튼 */}
-                      {isAdmin && user.vipStatus !== 'approved' && !user.isAdmin && (
+                      {isAdmin && user.vip_status !== 'approved' && !user.isAdmin && (
                         <div className="vip-actions">
                           <button
                             onClick={() => handleVipAction(user, 'approve')}
@@ -167,7 +167,7 @@ const AdminPanel = () => {
                           >
                             승인
                           </button>
-                          {user.vipStatus === 'pending' && (
+                          {user.vip_status === 'pending' && (
                             <button
                               onClick={() => handleVipAction(user, 'reject')}
                               className="reject-btn"

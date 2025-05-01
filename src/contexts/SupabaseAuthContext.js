@@ -240,96 +240,69 @@ export const AuthProvider = ({ children }) => {
   // 로그인
   const login = async (username, password) => {
     try {
-      setError('');
-      console.log('로그인 시도:', username);
+      console.log(`로그인 시도: ${username}`);
       
-      if (!isSupabaseConnected) {
-        throw new Error('Supabase 연결이 필요합니다. 인터넷 연결을 확인해주세요.');
+      if (!username.trim() || !password.trim()) {
+        throw new Error('사용자명과 비밀번호를 입력해주세요.');
       }
       
-      // 자동 이메일 생성 (회원가입과 동일한 로직)
-      const autoEmail = `${username}@example.com`;
+      // 자동 생성된 이메일 형식
+      const email = `${username}@example.com`;
       
-      console.log('Supabase 로그인 시도:', autoEmail);
-      
-      // Supabase로 로그인
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email: autoEmail,
-        password 
+      // Supabase 로그인 시도
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
       
-      if (error) {
-        console.error('Supabase 로그인 실패:', error.message);
-        throw new Error('로그인 정보가 일치하지 않습니다. 사용자명과 비밀번호를 확인해주세요.');
+      if (authError) {
+        console.error('로그인 오류:', authError);
+        throw new Error(authError.message || '로그인에 실패했습니다. 사용자명과 비밀번호를 확인해주세요.');
       }
       
-      console.log('Supabase 로그인 성공, 데이터:', data);
+      console.log('Auth 로그인 성공:', authData);
       
-      // 사용자 정보 가져오기
-      const { data: userData, error: userError } = await supabase
+      // 세션에서 사용자 정보 가져오기
+      const session = await supabase.auth.getSession();
+      console.log('세션 정보:', session);
+      
+      // users 테이블에서 추가 정보 가져오기
+      const { data: userData, error } = await supabase
         .from('users')
         .select('*')
         .eq('username', username)
         .single();
       
-      if (userError && userError.code !== 'PGRST116') {
-        console.error('사용자 데이터 조회 실패:', userError);
+      console.log('Supabase users 데이터:', userData);
+      
+      if (error) {
+        console.error('사용자 정보 조회 오류:', error);
       }
       
-      // 사용자 데이터 구성
-      let formattedUser;
+      // 사용자 객체 생성 (camelCase로 변환하지 않고 원본 데이터베이스 필드명 사용)
+      const user = {
+        id: userData?.id || session.session.user.id,
+        username: userData?.username || username,
+        email: userData?.email || email,
+        // 중요: snake_case 필드명을 camelCase로 변환하면서 추가적인 속성도 유지
+        isAdmin: userData?.is_admin || false,
+        membershipType: userData?.membership_type || 'free',
+        vipStatus: userData?.vip_status || 'none',
+        vipExpiry: userData?.vip_expiry || null,
+        // 원본 DB 필드도 함께 보존
+        is_admin: userData?.is_admin || false,
+        membership_type: userData?.membership_type || 'free',
+        vip_status: userData?.vip_status || 'none',
+        vip_expiry: userData?.vip_expiry || null,
+        createdAt: userData?.created_at || new Date().toISOString()
+      };
       
-      if (userData) {
-        // 사용자 테이블에서 데이터를 가져온 경우
-        formattedUser = {
-          id: userData.id,
-          username: userData.username,
-          email: userData.email || autoEmail,
-          isAdmin: userData.is_admin || username === '1111',
-          membershipType: userData.membership_type || (username === '1111' ? 'vip' : 'free'),
-          vipStatus: userData.vip_status || (username === '1111' ? 'approved' : 'none'),
-          vipExpiry: userData.vip_expiry || null,
-          createdAt: userData.created_at || data.user.created_at
-        };
-      } else {
-        // 사용자 정보가 없는 경우 새로 생성
-        const userId = uuidv4();
-        
-        // 기본 사용자 데이터 구성
-        formattedUser = {
-          id: userId,
-          username: username,
-          email: autoEmail,
-          isAdmin: username === '1111',
-          membershipType: username === '1111' ? 'vip' : 'free',
-          vipStatus: username === '1111' ? 'approved' : 'none',
-          createdAt: data.user.created_at
-        };
-        
-        // users 테이블에 사용자 정보 저장 (없는 경우)
-        const { error: insertError } = await supabase
-          .from('users')
-          .upsert([
-            { 
-              id: userId,
-              username: username,
-              email: autoEmail,
-              is_admin: username === '1111',
-              vip_status: username === '1111' ? 'approved' : 'none',
-              membership_type: username === '1111' ? 'vip' : 'free'
-            }
-          ]);
-          
-        if (insertError) {
-          console.error('로그인 후 사용자 데이터 저장 실패:', insertError);
-        }
-      }
+      console.log('최종 로그인 사용자 정보:', user);
       
-      console.log('로그인 성공, 사용자 정보:', formattedUser);
+      // 현재 사용자 설정
+      setCurrentUser(user);
       
-      setCurrentUser(formattedUser);
-      localStorage.setItem(CURRENT_USER_KEY, formattedUser.username);
-      return { success: true, user: formattedUser };
+      return user;
     } catch (err) {
       console.error('로그인 오류:', err);
       setError(err.message);
@@ -606,6 +579,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.message || '사용자 목록을 가져오는 중 오류가 발생했습니다.');
       }
       
+      console.log('데이터베이스에서 가져온 원본 사용자 데이터:', data);
+      
+      // 사용자 데이터를 원본 그대로 반환 (필드명 변환 없이)
       return data || [];
     } catch (error) {
       console.error('사용자 목록 가져오기 오류:', error);
