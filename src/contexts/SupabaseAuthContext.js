@@ -494,7 +494,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       
-      console.log('새로고침된 사용자 데이터:', userData);
+      console.log('새로고침된 사용자 데이터 RAW:', userData);
       
       // 현재 사용자 상태 업데이트
       const updatedUser = {
@@ -502,12 +502,13 @@ export const AuthProvider = ({ children }) => {
         username: userData.username,
         email: userData.email,
         isAdmin: userData.is_admin,
-        membershipType: userData.membership_type,
-        vipStatus: userData.vip_status,
-        vipExpiry: userData.vip_expiry
+        // 데이터베이스 칼럼명과 코드 속성명 일치시키기
+        membershipType: userData.membership_type || 'free',
+        vipStatus: userData.vip_status || 'none',
+        vipExpiry: userData.vip_expiry || null
       };
       
-      console.log('업데이트된 사용자 정보:', updatedUser);
+      console.log('업데이트된 사용자 정보 (가공):', updatedUser);
       setCurrentUser(updatedUser);
       
       return updatedUser;
@@ -560,11 +561,31 @@ export const AuthProvider = ({ children }) => {
         throw new Error(updateError.message || 'VIP 상태 업데이트 중 오류가 발생했습니다.');
       }
       
-      // 세션 사용자 정보 업데이트 (현재 로그인한 사용자가 VIP 승인을 받은 경우)
-      if (currentUser && currentUser.username === username) {
-        // refreshCurrentUser 함수로 데이터베이스에서 최신 정보 가져오기
-        await refreshCurrentUser();
-        console.log('현재 사용자의 VIP 상태가 새로고침되었습니다.');
+      // 업데이트된 사용자 정보 확인
+      const { data: updatedUser, error: checkError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+        
+      console.log('데이터베이스 업데이트 후 사용자 정보:', updatedUser);
+      
+      // 직접 승인 처리된 사용자의 업데이트
+      if (username === currentUser.username) {
+        const update = {
+          ...currentUser,
+          vipStatus: vipStatus,
+          vipExpiry: vipExpiry,
+          membershipType: membershipType
+        };
+        
+        console.log('로컬 사용자 상태 직접 업데이트:', update);
+        setCurrentUser(update);
+        
+        // 페이지 새로고침
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
       
       return true;

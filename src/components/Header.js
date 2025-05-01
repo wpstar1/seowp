@@ -5,8 +5,24 @@ import '../styles/Header.css';
 
 const Header = () => {
   const { currentUser, logout, refreshCurrentUser } = useAuth();
+  
+  // VIP 상태 확인 및 관리자 확인
   const isAdmin = currentUser && currentUser.username === '1111'; 
-  const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved' || isAdmin);
+  
+  // isVip 로직을 상세히 분석하여 적용
+  const isVip = (() => {
+    if (!currentUser) return false;
+    
+    const conditions = {
+      isMembershipVip: currentUser.membershipType === 'vip',
+      isStatusApproved: currentUser.vipStatus === 'approved',
+      isAdminUser: isAdmin
+    };
+    
+    console.log('[Header] VIP 조건 확인:', conditions, currentUser);
+    
+    return conditions.isMembershipVip || conditions.isStatusApproved || conditions.isAdminUser;
+  })();
   
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);

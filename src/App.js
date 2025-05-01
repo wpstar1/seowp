@@ -18,7 +18,20 @@ function App() {
   // 인증 관련 변수
   const { currentUser, isAdmin, refreshCurrentUser, requestVipUpgrade } = useAuth();
   const isLoggedIn = !!currentUser;
-  const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved' || isAdmin);
+  // isVip 확인 로직 수정 - 디버깅용 로그 추가
+  const isVip = (() => {
+    if (!currentUser) return false;
+    
+    const conditions = {
+      isMembershipVip: currentUser.membershipType === 'vip',
+      isStatusApproved: currentUser.vipStatus === 'approved',
+      isAdminUser: isAdmin
+    };
+    
+    console.log('VIP 조건 확인:', conditions);
+    
+    return conditions.isMembershipVip || conditions.isStatusApproved || conditions.isAdminUser;
+  })();
   
   // 로그인 상태 확인 및 사용자 정보 새로고침
   useEffect(() => {
