@@ -4,14 +4,26 @@ import { useAuth } from '../contexts/SupabaseAuthContext';
 import '../styles/Header.css';
 
 const Header = () => {
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, logout } = useAuth();
   const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved');
   const isAdmin = currentUser && currentUser.username === '1111'; 
   
   // 로그아웃 처리
   const handleLogout = () => {
-    signOut();
-    window.location.href = '/';
+    if (logout) {
+      try {
+        logout();
+        window.location.href = '/';
+      } catch (error) {
+        console.error('로그아웃 오류:', error);
+        alert('로그아웃 중 오류가 발생했습니다.');
+      }
+    } else {
+      console.error('logout 함수가 정의되지 않았습니다.');
+      // 강제 로그아웃 처리
+      localStorage.removeItem('smart_content_current_user');
+      window.location.href = '/';
+    }
   };
   
   // VIP 신청 모달 표시 함수
