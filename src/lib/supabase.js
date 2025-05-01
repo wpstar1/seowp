@@ -23,7 +23,7 @@ export const auth = {
     if (authError) throw authError;
     
     // 2. 사용자 테이블에 추가 정보 저장
-    const { data: userData, error: userError } = await supabase
+    const { data: userInfo, error: userError } = await supabase
       .from('users')
       .insert([
         { 
@@ -42,7 +42,7 @@ export const auth = {
     
     return {
       user: {
-        ...userData[0],
+        ...userInfo[0],
         id: authData.user.id
       }
     };

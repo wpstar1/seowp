@@ -5,8 +5,8 @@ import { useAuth } from './contexts/SupabaseAuthContext';
 import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
-// OpenAI API 키 - 환경 변수로 관리 (배포 시 설정 필요)
-const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "YOUR_API_KEY_HERE";
+// 환경 변수로 API 키 관리
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "";
 
 // 배열에서 무작위 항목을 선택하는 유틸리티 함수
 const getRandomItem = (array) => {
