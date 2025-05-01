@@ -943,26 +943,35 @@ ${images.slice(3).map((img, index) =>
                   
                   <div className="link-inputs-container">
                     <div className="link-inputs">
-                      <input 
-                        type="text" 
-                        className="link-input" 
-                        placeholder="https://내도메인.com" 
-                        value={link}
-                        onChange={(e) => setLink(e.target.value)}
-                      />
-                      <input 
-                        type="text" 
-                        className="keyword-input-small" 
-                        placeholder="노출할 키워드 입력"
-                        value={additionalKeyword}
-                        onChange={(e) => setAdditionalKeyword(e.target.value)}
-                      />
+                      <div className="input-group">
+                        <label htmlFor="link-url" className="input-label">링크 URL</label>
+                        <input 
+                          id="link-url"
+                          type="url" 
+                          className="link-input" 
+                          placeholder="https://example.com" 
+                          value={link}
+                          onChange={(e) => setLink(e.target.value)}
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label htmlFor="link-keyword" className="input-label">키워드</label>
+                        <input 
+                          id="link-keyword"
+                          type="text" 
+                          className="keyword-input-small" 
+                          placeholder="노출할 키워드 입력"
+                          value={additionalKeyword}
+                          onChange={(e) => setAdditionalKeyword(e.target.value)}
+                        />
+                      </div>
                     </div>
                     <button 
                       className="add-link-btn"
                       onClick={addAnchorLink}
+                      disabled={!link.trim() || !additionalKeyword.trim()}
                     >
-                      추가
+                      링크 추가
                     </button>
                   </div>
                   
