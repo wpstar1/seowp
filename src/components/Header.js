@@ -1,28 +1,23 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/SupabaseAuthContext';
 import '../styles/Header.css';
 
 const Header = () => {
-  const { currentUser, logout } = useAuth();
-  const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved');
+  const { currentUser, logout, refreshCurrentUser } = useAuth();
   const isAdmin = currentUser && currentUser.username === '1111'; 
+  const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved' || isAdmin);
+  
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   
   // 로그아웃 처리
-  const handleLogout = () => {
-    if (logout) {
-      try {
-        logout();
-        window.location.href = '/';
-      } catch (error) {
-        console.error('로그아웃 오류:', error);
-        alert('로그아웃 중 오류가 발생했습니다.');
-      }
-    } else {
-      console.error('logout 함수가 정의되지 않았습니다.');
-      // 강제 로그아웃 처리
-      localStorage.removeItem('smart_content_current_user');
+  const handleLogout = async () => {
+    try {
+      await logout();
       window.location.href = '/';
+    } catch (error) {
+      console.error('로그아웃 오류:', error);
     }
   };
   
@@ -40,6 +35,18 @@ const Header = () => {
     }
   };
   
+  // 화면 진입시 사용자 정보 새로고침
+  useEffect(() => {
+    const refreshUserInfo = async () => {
+      if (currentUser) {
+        await refreshCurrentUser();
+        console.log('Header: 사용자 정보 새로고침 완료');
+      }
+    };
+    
+    refreshUserInfo();
+  }, [currentUser, refreshCurrentUser]);
+
   return (
     <header className="app-header">
       <div className="logo">

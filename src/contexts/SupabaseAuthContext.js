@@ -467,6 +467,55 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 현재 사용자 정보 다시 불러오기
+  const refreshCurrentUser = async () => {
+    try {
+      if (!currentUser || !currentUser.username) {
+        console.log('새로고침할 현재 사용자 정보가 없습니다.');
+        return;
+      }
+      
+      console.log('사용자 정보 새로고침 시작:', currentUser.username);
+      
+      // 사용자 정보 조회
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', currentUser.username)
+        .single();
+      
+      if (error) {
+        console.error('사용자 정보 새로고침 오류:', error);
+        return;
+      }
+      
+      if (!userData) {
+        console.error('사용자 정보를 찾을 수 없습니다:', currentUser.username);
+        return;
+      }
+      
+      console.log('새로고침된 사용자 데이터:', userData);
+      
+      // 현재 사용자 상태 업데이트
+      const updatedUser = {
+        id: currentUser.id,
+        username: userData.username,
+        email: userData.email,
+        isAdmin: userData.is_admin,
+        membershipType: userData.membership_type,
+        vipStatus: userData.vip_status,
+        vipExpiry: userData.vip_expiry
+      };
+      
+      console.log('업데이트된 사용자 정보:', updatedUser);
+      setCurrentUser(updatedUser);
+      
+      return updatedUser;
+    } catch (err) {
+      console.error('사용자 정보 새로고침 중 오류 발생:', err);
+    }
+  };
+
   // VIP 승인/거부 (관리자 전용)
   const handleVipRequest = async (username, action) => {
     try {
@@ -513,14 +562,9 @@ export const AuthProvider = ({ children }) => {
       
       // 세션 사용자 정보 업데이트 (현재 로그인한 사용자가 VIP 승인을 받은 경우)
       if (currentUser && currentUser.username === username) {
-        setCurrentUser({
-          ...currentUser,
-          vipStatus: vipStatus,
-          membershipType: membershipType,
-          vipExpiry: vipExpiry
-        });
-        
-        console.log('현재 사용자의 VIP 상태가 업데이트되었습니다:', vipStatus);
+        // refreshCurrentUser 함수로 데이터베이스에서 최신 정보 가져오기
+        await refreshCurrentUser();
+        console.log('현재 사용자의 VIP 상태가 새로고침되었습니다.');
       }
       
       return true;
@@ -551,18 +595,19 @@ export const AuthProvider = ({ children }) => {
   // 컨텍스트 값 정의
   const value = {
     currentUser,
-    loading,
-    error,
-    isAdmin: currentUser?.isAdmin || false,
-    isVip: checkVipMembership(currentUser),
+    setCurrentUser,
     register,
     login,
     logout,
-    signOut: logout, // logout 함수를 signOut 이름으로도 내보내기
     requestVipUpgrade,
+    checkVipMembership,
     handleVipRequest,
     getAllUsersList,
-    isSupabaseConnected
+    refreshCurrentUser, // 사용자 정보 새로고침 함수 노출
+    isAdmin: currentUser?.isAdmin || false,
+    isSupabaseConnected,
+    error,
+    setError
   };
 
   return (

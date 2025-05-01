@@ -16,9 +16,21 @@ const getRandomItem = (array) => {
 
 function App() {
   // 인증 관련 변수
-  const { currentUser, isAdmin, requestVipUpgrade } = useAuth();
+  const { currentUser, isAdmin, refreshCurrentUser, requestVipUpgrade } = useAuth();
   const isLoggedIn = !!currentUser;
   const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved' || isAdmin);
+  
+  // 로그인 상태 확인 및 사용자 정보 새로고침
+  useEffect(() => {
+    const checkAndRefreshUserStatus = async () => {
+      if (isLoggedIn) {
+        console.log('사용자 정보 새로고침 시도...');
+        await refreshCurrentUser();
+      }
+    };
+    
+    checkAndRefreshUserStatus();
+  }, [isLoggedIn, refreshCurrentUser]);
   
   useEffect(() => {
     // 사용자 VIP 상태 확인 및 로깅
@@ -325,7 +337,7 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
             vip: [
               `#${keyword} 요즘 이게 대세라는데 직접 써봤습니다`,
               `솔직히 #${keyword} 이거 완전 필수템임...`,
-              `결국 다시 돌아온 #${keyword} 인생템!`
+              `와... 이거 실화냐? 라는 말이 절로 나올 겁니다`
             ]
           },
           뉴스레터: {
