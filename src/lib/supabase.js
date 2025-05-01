@@ -1,9 +1,9 @@
 // Supabase 클라이언트 설정
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase URL과 API 키 설정 (환경 변수 사용)
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
+// Supabase URL과 API 키 설정
+const supabaseUrl = 'https://eerkpvbwuyzszvzuoxvn.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlcmtwdmJ3dXl6c3p2enVveHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI3MzQ0ODIsImV4cCI6MjAyODMxMDQ4Mn0.yL7HsI4OQ8hjpA2Qf3qmCSaHXfhkpnhUZeWkkfEWeco';
 
 // Supabase 클라이언트 생성
 export const supabase = createClient(supabaseUrl, supabaseKey);

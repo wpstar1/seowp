@@ -5,7 +5,7 @@ import { useAuth } from './contexts/SupabaseAuthContext';
 import './App.css';
 
 // API 키
-const API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "";
+const API_KEY = "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";
 
 function ContentCreator() {
   // 인증 컨텍스트에서 사용자 정보 및 사용량 관련 함수 가져오기

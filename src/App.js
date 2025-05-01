@@ -6,7 +6,7 @@ import Header from './components/Header';
 import DatabaseInitializer from './components/DatabaseInitializer';
 
 // 환경 변수로 API 키 관리
-const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || "";
+const OPENAI_API_KEY = "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";
 
 // 배열에서 무작위 항목을 선택하는 유틸리티 함수
 const getRandomItem = (array) => {
