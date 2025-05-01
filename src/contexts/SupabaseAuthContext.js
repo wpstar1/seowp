@@ -26,7 +26,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       try {
-        const { data, error } = await supabase.from('users').select('count', { count: 'exact' }).limit(1);
+        // 더 단순한 연결 확인 방법 사용
+        const { data, error } = await supabase.auth.getSession();
+        
         if (error) {
           console.error('Supabase 연결 오류:', error);
           setIsSupabaseConnected(false);
