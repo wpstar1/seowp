@@ -81,6 +81,11 @@ const AdminPanel = () => {
       
       // 성공 메시지
       alert(`${selectedUser.username} 사용자의 VIP 신청이 ${approve ? '승인' : '거부'}되었습니다.`);
+      
+      // 약간의 지연 후 페이지 새로고침 (상태 갱신을 위해)
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('VIP 처리 오류:', error);
       alert(`VIP 상태 업데이트 중 오류가 발생했습니다: ${error.message}`);

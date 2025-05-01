@@ -511,6 +511,18 @@ export const AuthProvider = ({ children }) => {
         throw new Error(updateError.message || 'VIP 상태 업데이트 중 오류가 발생했습니다.');
       }
       
+      // 세션 사용자 정보 업데이트 (현재 로그인한 사용자가 VIP 승인을 받은 경우)
+      if (currentUser && currentUser.username === username) {
+        setCurrentUser({
+          ...currentUser,
+          vipStatus: vipStatus,
+          membershipType: membershipType,
+          vipExpiry: vipExpiry
+        });
+        
+        console.log('현재 사용자의 VIP 상태가 업데이트되었습니다:', vipStatus);
+      }
+      
       return true;
     } catch (error) {
       console.error('VIP 요청 처리 오류:', error);

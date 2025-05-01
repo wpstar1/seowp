@@ -20,6 +20,19 @@ function App() {
   const isLoggedIn = !!currentUser;
   const isVip = currentUser && (currentUser.membershipType === 'vip' || currentUser.vipStatus === 'approved' || isAdmin);
   
+  useEffect(() => {
+    // 사용자 VIP 상태 확인 및 로깅
+    if (currentUser) {
+      console.log('현재 사용자 상태:', {
+        username: currentUser.username,
+        isAdmin: isAdmin,
+        membershipType: currentUser.membershipType,
+        vipStatus: currentUser.vipStatus,
+        isVip: isVip
+      });
+    }
+  }, [currentUser, isAdmin, isVip]);
+  
   // 상태 관리
   const [keyword, setKeyword] = useState('');
   const [link, setLink] = useState('');
