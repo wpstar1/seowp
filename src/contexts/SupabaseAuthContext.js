@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
             const { data: userData, error } = await supabase
               .from('users')
               .select('*')
-              .eq('user_id', session.session.user.id)
+              .eq('username', session.session.user.user_metadata?.username || '')
               .single();
             
             if (error) {
@@ -288,6 +288,7 @@ export const AuthProvider = ({ children }) => {
           isAdmin: userData.is_admin || username === '1111',
           membershipType: userData.membership_type || (username === '1111' ? 'vip' : 'free'),
           vipStatus: userData.vip_status || (username === '1111' ? 'approved' : 'none'),
+          vipExpiry: userData.vip_expiry || null,
           createdAt: userData.created_at || data.user.created_at
         };
       } else {

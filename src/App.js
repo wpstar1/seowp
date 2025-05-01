@@ -403,8 +403,11 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           // 이미지 추가 (있는 경우)
           if (images.length > 0) {
             const randomImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            mockContent += `![${images[randomImageIndex].name}](${images[randomImageIndex].dataUrl})\n`;
-            mockContent += `*제가 직접 촬영한 ${keyword} 관련 이미지*\n\n`;
+            // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
+            if (randomImageIndex < images.length && images[randomImageIndex]) {
+              mockContent += `![${images[randomImageIndex].name}](${images[randomImageIndex].dataUrl})\n`;
+              mockContent += `*제가 직접 촬영한 ${keyword} 관련 이미지*\n\n`;
+            }
           }
           
           mockContent += `## 내가 발견한 ${keyword}의 진짜 모습\n\n`;
@@ -420,8 +423,11 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           // 두 번째 이미지 추가 (있는 경우)
           if (images.length > 1) {
             const secondImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            mockContent += `![${images[secondImageIndex].name}](${images[secondImageIndex].dataUrl})\n`;
-            mockContent += `*${keyword}를 활용한 실제 사례*\n\n`;
+            // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
+            if (secondImageIndex < images.length && images[secondImageIndex]) {
+              mockContent += `![${images[secondImageIndex].name}](${images[secondImageIndex].dataUrl})\n`;
+              mockContent += `*${keyword}를 활용한 실제 사례*\n\n`;
+            }
           }
           
           mockContent += `## 내가 찾은 효과적인 ${keyword} 활용법\n\n`;
@@ -437,8 +443,11 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           // 세 번째 이미지 추가 (있는 경우)
           if (images.length > 2) {
             const thirdImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            mockContent += `![${images[thirdImageIndex].name}](${images[thirdImageIndex].dataUrl})\n`;
-            mockContent += `*${keyword} 활용의 놀라운 결과*\n\n`;
+            // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
+            if (thirdImageIndex < images.length && images[thirdImageIndex]) {
+              mockContent += `![${images[thirdImageIndex].name}](${images[thirdImageIndex].dataUrl})\n`;
+              mockContent += `*${keyword} 활용의 놀라운 결과*\n\n`;
+            }
           }
           
           mockContent += `## 마치며\n\n`;
@@ -458,9 +467,11 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           if (images.length > 3) {
             mockContent += `## 추가 이미지 갤러리\n\n`;
             for (let i = 3; i < Math.min(images.length, 6); i++) {
-              const img = images[i];
-              mockContent += `![${img.name}](${img.dataUrl})\n`;
-              mockContent += `*${keyword}와 관련된 추가 이미지 ${i-2}*\n\n`;
+              // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
+              if (i < images.length && images[i]) {
+                mockContent += `![${images[i].name}](${images[i].dataUrl})\n`;
+                mockContent += `*${keyword}와 관련된 추가 이미지 ${i-2}*\n\n`;
+              }
             }
           }
           
