@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import moment from 'moment';
 import { supabase } from '../lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 // 인증 컨텍스트 생성
 const AuthContext = createContext();
@@ -67,6 +68,7 @@ export const AuthProvider = ({ children }) => {
             } else {
               // Supabase에서 가져온 데이터를 기존 앱 형식에 맞게 변환
               const formattedUser = {
+                id: userData.id,
                 username: userData.username,
                 email: userData.email,
                 isAdmin: userData.is_admin,
@@ -169,12 +171,15 @@ export const AuthProvider = ({ children }) => {
       console.log('사용자 등록 성공, 사용자 ID:', data.user.id);
       console.log('users 테이블에 저장 시도:', { username: userData.username, is_admin: isAdmin });
       
+      // UUID 생성 (PostgreSQL의 UUID 타입과 호환)
+      const userId = uuidv4();
+      
       // users 테이블에 사용자 정보 저장
       const { error: insertError } = await supabase
         .from('users')
         .insert([
           { 
-            id: data.user.id, // 중요: Auth 시스템의 ID를 users 테이블의 ID로 사용
+            id: userId, // UUID 생성
             username: userData.username,
             email: autoEmail, // 자동 생성된 이메일 저장
             is_admin: isAdmin,
@@ -191,7 +196,7 @@ export const AuthProvider = ({ children }) => {
           .from('users')
           .upsert([
             { 
-              id: data.user.id,
+              id: userId,
               username: userData.username,
               email: autoEmail,
               is_admin: isAdmin,
@@ -211,6 +216,7 @@ export const AuthProvider = ({ children }) => {
       
       // 사용자 정보를 기존 앱 형식에 맞게 변환
       const formattedUser = {
+        id: userId, // UUID를 사용자 객체에도 추가
         username: userData.username,
         email: autoEmail,
         isAdmin: isAdmin,
@@ -276,6 +282,7 @@ export const AuthProvider = ({ children }) => {
       if (userData) {
         // 사용자 테이블에서 데이터를 가져온 경우
         formattedUser = {
+          id: userData.id,
           username: userData.username,
           email: userData.email || autoEmail,
           isAdmin: userData.is_admin || username === '1111',
@@ -284,8 +291,12 @@ export const AuthProvider = ({ children }) => {
           createdAt: userData.created_at || data.user.created_at
         };
       } else {
+        // 사용자 정보가 없는 경우 새로 생성
+        const userId = uuidv4();
+        
         // 기본 사용자 데이터 구성
         formattedUser = {
+          id: userId,
           username: username,
           email: autoEmail,
           isAdmin: username === '1111',
@@ -299,7 +310,7 @@ export const AuthProvider = ({ children }) => {
           .from('users')
           .upsert([
             { 
-              id: data.user.id,
+              id: userId,
               username: username,
               email: autoEmail,
               is_admin: username === '1111',
@@ -552,6 +563,7 @@ export const AuthProvider = ({ children }) => {
         
         // Supabase 데이터를 앱 형식에 맞게 변환
         const formattedUsers = data.map(user => ({
+          id: user.id,
           username: user.username,
           email: user.email || '',
           isAdmin: user.is_admin || user.username === '1111',
@@ -569,6 +581,7 @@ export const AuthProvider = ({ children }) => {
           if (!existingUsernames.includes(localUser.username)) {
             console.log('로컬에만 있는 사용자 추가:', localUser.username);
             formattedUsers.push({
+              id: localUser.id,
               username: localUser.username,
               email: localUser.email || '',
               isAdmin: localUser.isAdmin || localUser.username === '1111',
