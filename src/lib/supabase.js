@@ -3,19 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 
 // Supabase URL과 API 키 설정
 const supabaseUrl = 'https://eerkpvbwuyzszvzuoxvn.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlcmtwdmJ3dXl6c3p2enVveHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI3MzQ0ODIsImV4cCI6MjAyODMxMDQ4Mn0.yL7HsI4OQ8hjpA2Qf3qmCSaHXfhkpnhUZeWkkfEWeco';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlcmtwdmJ3dXl6c3p2enVveHZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMjc0NDUsImV4cCI6MjA2MTYwMzQ0NX0.g5ebQX7U0IPEmuN5E7o8yOOoc5_kOaqVUq-e7ikKxCg';
 
 // Supabase 클라이언트 생성
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
+// auth 객체 내보내기
+export const auth = supabase.auth;
+
 // 사용자 관련 함수들
-export const auth = {
+export const users = {
   // 회원가입
   async signup(userData) {
     const { email, password, username } = userData;
     
     // 1. Supabase 인증을 통한 사용자 생성
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await auth.signUp({
       email,
       password,
     });
@@ -51,7 +54,7 @@ export const auth = {
   // 로그인
   async login({ email, password }) {
     // 1. Supabase 인증으로 로그인
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await auth.signInWithPassword({
       email,
       password
     });
@@ -77,14 +80,14 @@ export const auth = {
   
   // 로그아웃
   async logout() {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await auth.signOut();
     if (error) throw error;
     return { success: true };
   },
   
   // 현재 사용자 가져오기
   async getCurrentUser() {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await auth.getSession();
     
     if (sessionError || !session) {
       return { user: null };
@@ -108,7 +111,7 @@ export const auth = {
 };
 
 // 사용자 관리 함수들
-export const users = {
+export const usersManagement = {
   // 모든 사용자 목록 가져오기
   async getAll() {
     const { data, error } = await supabase

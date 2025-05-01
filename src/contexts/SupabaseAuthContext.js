@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import moment from 'moment';
-import { supabase, auth as supabaseAuth } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 // 인증 컨텍스트 생성
 const AuthContext = createContext();
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       try {
         if (isSupabaseConnected) {
           // Supabase 세션 확인
-          const { data: session } = await supabaseAuth.getSession();
+          const { data: session } = await supabase.auth.getSession();
           
           if (session && session.session) {
             // 사용자 정보 조회
@@ -135,7 +135,15 @@ export const AuthProvider = ({ children }) => {
       
       if (isSupabaseConnected) {
         // Supabase로 회원가입
-        const { data, error } = await supabaseAuth.signup(userData);
+        const { data, error } = await supabase.auth.signUp({
+          email: userData.email,
+          password: userData.password,
+          options: {
+            data: {
+              username: userData.username
+            }
+          }
+        });
         
         if (error) {
           throw new Error(error.message || '회원가입 중 오류가 발생했습니다.');
@@ -220,7 +228,7 @@ export const AuthProvider = ({ children }) => {
       
       if (isSupabaseConnected) {
         // Supabase로 로그인
-        const { data, error } = await supabaseAuth.login({ 
+        const { data, error } = await supabase.auth.signInWithPassword({ 
           email: username, // username으로 이메일 필드를 처리
           password 
         });
@@ -290,7 +298,7 @@ export const AuthProvider = ({ children }) => {
     try {
       if (isSupabaseConnected) {
         // Supabase 로그아웃
-        const { error } = await supabaseAuth.signOut();
+        const { error } = await supabase.auth.signOut();
         if (error) throw error;
       }
       
