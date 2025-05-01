@@ -149,13 +149,33 @@ export const AuthProvider = ({ children }) => {
           throw new Error(error.message || '회원가입 중 오류가 발생했습니다.');
         }
         
+        // 사용자 정보를 users 테이블에도 저장
+        const isAdmin = userData.username === '1111';
+        const vipStatus = userData.username === '1111' ? 'approved' : 'none';
+        const membershipType = userData.username === '1111' ? 'vip' : 'free';
+        
+        // users 테이블에 사용자 정보 저장
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([
+            { 
+              username: userData.username,
+              is_admin: isAdmin,
+              vip_status: vipStatus
+            }
+          ]);
+          
+        if (insertError) {
+          console.error('users 테이블 저장 오류:', insertError);
+        }
+        
         // 사용자 정보를 기존 앱 형식에 맞게 변환
         const formattedUser = {
           username: userData.username,
           email: userData.email,
-          isAdmin: userData.username === '1111',
-          membershipType: userData.username === '1111' ? 'vip' : 'free',
-          vipStatus: userData.username === '1111' ? 'approved' : 'none',
+          isAdmin: isAdmin,
+          membershipType: membershipType,
+          vipStatus: vipStatus,
           createdAt: new Date().toISOString()
         };
         
@@ -550,6 +570,7 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
+    signOut: logout, // logout 함수를 signOut 이름으로도 내보내기
     requestVipUpgrade,
     handleVipRequest,
     getAllUsersList,
