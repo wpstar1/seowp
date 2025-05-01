@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/SupabaseAuthContext';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
-  const { currentUser, getAllUsersList, handleVipRequest } = useAuth();
+  const { currentUser, getAllUsersList, handleVipRequest, deleteUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,6 +12,8 @@ const AdminPanel = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionType, setActionType] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   // 관리자가 아니면 접근 불가
   const isAdmin = currentUser && (currentUser.isAdmin || currentUser.username === '1111');
@@ -92,6 +94,43 @@ const AdminPanel = () => {
     }
   };
 
+  // 회원 삭제 모달 표시
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  // 회원 삭제 실행
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      console.log(`${userToDelete.username} 사용자 삭제 시도...`);
+      
+      // Supabase에서 사용자 삭제 함수 호출
+      await deleteUser(userToDelete.username);
+      console.log('사용자 삭제 성공');
+      
+      // 사용자 목록 새로고침
+      refreshUserList();
+      
+      // 모달 닫기
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      
+      // 성공 메시지
+      alert(`${userToDelete.username} 사용자가 삭제되었습니다.`);
+      
+      // 페이지 새로고침
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('사용자 삭제 오류:', error);
+      alert(`사용자 삭제 중 오류가 발생했습니다: ${error.message}`);
+    }
+  };
+
   // 관리자가 아니면 홈으로 리다이렉트
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -151,11 +190,15 @@ const AdminPanel = () => {
                       )}
                     </td>
                     <td>
-                      {user.createdAt ? 
-                        (new Date(user.createdAt).toString() !== 'Invalid Date' ? 
-                          new Date(user.createdAt).toLocaleDateString() : 
+                      {user.created_at ? 
+                        (new Date(user.created_at).toString() !== 'Invalid Date' ? 
+                          new Date(user.created_at).toLocaleDateString() : 
                           '날짜 없음'
-                        ) : '날짜 없음'}
+                        ) : (user.createdAt ? 
+                            (new Date(user.createdAt).toString() !== 'Invalid Date' ? 
+                              new Date(user.createdAt).toLocaleDateString() : 
+                              '날짜 없음'
+                            ) : '날짜 없음')}
                     </td>
                     <td>
                       {/* 관리자만 볼 수 있는 VIP 승인 버튼 */}
@@ -176,6 +219,16 @@ const AdminPanel = () => {
                             </button>
                           )}
                         </div>
+                      )}
+                      
+                      {/* 회원 삭제 버튼 (관리자만 보임) */}
+                      {isAdmin && !user.isAdmin && (
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="delete-btn"
+                        >
+                          삭제
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -203,6 +256,34 @@ const AdminPanel = () => {
                 onClick={() => {
                   setShowConfirmModal(false);
                   setSelectedUser(null);
+                }}
+                className="cancel-btn"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 삭제 확인 모달 */}
+      {showDeleteModal && userToDelete && (
+        <div className="confirm-modal">
+          <div className="modal-content">
+            <h3>회원 삭제</h3>
+            <p>
+              <strong>{userToDelete.username}</strong> 사용자를 정말 삭제하시겠습니까?
+              <br /><br />
+              <span className="warning-text">이 작업은 되돌릴 수 없습니다.</span>
+            </p>
+            <div className="modal-buttons">
+              <button onClick={confirmDeleteUser} className="delete-confirm-btn">
+                삭제
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setUserToDelete(null);
                 }}
                 className="cancel-btn"
               >

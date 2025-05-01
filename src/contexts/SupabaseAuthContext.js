@@ -589,6 +589,58 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 사용자 삭제 (관리자 전용)
+  const deleteUser = async (username) => {
+    try {
+      if (!currentUser || !currentUser.isAdmin) {
+        throw new Error('관리자 권한이 필요합니다.');
+      }
+      
+      // 삭제할 사용자 확인
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (userError || !user) {
+        throw new Error('삭제할 사용자를 찾을 수 없습니다.');
+      }
+      
+      console.log(`사용자 삭제 시작: ${username}`);
+      
+      // users 테이블에서 사용자 삭제
+      const { error: deleteError } = await supabase
+        .from('users')
+        .delete()
+        .eq('username', username);
+      
+      if (deleteError) {
+        console.error('사용자 데이터 삭제 오류:', deleteError);
+        throw new Error('사용자 데이터 삭제 중 오류가 발생했습니다.');
+      }
+      
+      // 관련 Auth 계정 삭제 시도 (어드민 권한 필요)
+      try {
+        // 이메일 주소 조회 (자동 생성된 이메일)
+        const email = `${username}@example.com`;
+        
+        // Auth 사용자 삭제는 관리자 권한이 필요한 작업이므로 에러 발생할 수 있음
+        // 여기서는 데이터베이스 users 테이블에서만 삭제하고, Auth는 무시
+        console.log(`Auth 계정은 관리자 API 권한 필요로 삭제하지 않음: ${email}`);
+      } catch (authError) {
+        console.warn('Auth 계정 삭제 실패 (예상된 결과):', authError);
+        // Auth 계정 삭제 실패는 무시하고 진행 (일반적으로 기대되는 동작)
+      }
+      
+      console.log(`사용자 삭제 완료: ${username}`);
+      return true;
+    } catch (error) {
+      console.error('사용자 삭제 오류:', error);
+      throw error;
+    }
+  };
+
   // 컨텍스트 값 정의
   const value = {
     currentUser,
@@ -597,10 +649,10 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     requestVipUpgrade,
-    checkVipMembership,
     handleVipRequest,
     getAllUsersList,
-    refreshCurrentUser, // 사용자 정보 새로고침 함수 노출
+    deleteUser, // 삭제 함수 추가
+    refreshCurrentUser,
     isAdmin: currentUser?.isAdmin || false,
     isSupabaseConnected,
     error,
