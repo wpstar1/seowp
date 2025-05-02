@@ -14,6 +14,20 @@ const getRandomItem = (array) => {
   return array[Math.floor(Math.random() * array.length)];
 };
 
+// 마크다운을 HTML로 변환하는 함수 (기존 dangerouslySetInnerHTML 로직 활용 및 확장)
+const convertMarkdownToHtml = (markdown) => {
+  if (!markdown) return '';
+  return markdown
+    .replace(/\n/g, '<br>') // 줄바꿈 -> <br>
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>') // H1
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>') // H2
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>') // H3
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+    .replace(/\!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0;" />') // 이미지
+    .replace(/\[(.*?)!\]\((.*?)\)/g, '$1 $2') // 잘못된 링크 형식 처리 (혹시 모를 경우)
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'); // 링크 (새 탭에서 열리도록)
+};
+
 function App() {
   // 인증 관련 변수
   const { currentUser, isAdmin, refreshCurrentUser, requestVipUpgrade } = useAuth();
@@ -165,82 +179,103 @@ function App() {
             });
           }, 500);
           
-          // 제목 생성을 위한 프롬프트
-          const headlinePrompt = `
-키워드 "${keyword}"에 대한 SEO 최적화된 매력적인 블로그 제목 5개를 생성해주세요.
-제목들은 클릭을 유도하면서도 전문적이고 신뢰할 수 있어야 합니다.
-각 제목은 한 줄에 하나씩 작성해주세요.
-`;
-
-          // 본문 생성을 위한 프롬프트
-          const contentPrompt = `
-다음 키워드에 대한 SEO 최적화된 콘텐츠를 작성해주세요:
-
-키워드: ${keyword}
-콘텐츠 유형: ${contentType}
-작성 스타일: ${styleType}
-
-요구사항:
-1. 전체적으로 ${keyword}에 대한 자연스러운 정보를 제공해야 합니다.
-2. 마치 사람이 직접 작성한 것처럼 자연스러운 문체로 작성해주세요.
-3. 구글 SEO에 최적화된 콘텐츠여야 합니다.
-4. 키워드를 자연스럽게 통합하되 과도하게 사용하지 마세요.
-5. 전문적이면서도 읽기 쉬운 어조를 유지하세요.
-6. 글은 서론, 본론, 결론 구조를 가지고 있어야 합니다.
-7. 마크다운 형식으로 제목, 소제목, 단락을 구분해주세요.
-8. 글자 수는 최소 500자 이상이어야 합니다.
-${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게 본문에 통합해주세요:\n${anchorLinks.map(link => `   - 텍스트: ${link.text}, URL: ${link.url}`).join('\n')}` : ''}
-`;
-
-          // OpenAI API 호출 - 제목 생성
-          const headlinesResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          // GPT-4 호출을 위한 통합 프롬프트 생성
+          const combinedPrompt = `
+당신은 뛰어난 SEO 전문가이자, 사람의 마음을 사로잡는 글을 쓰는 전문 작가입니다.\n다음 키워드에 대해 SEO 최적화되고 **매우 인간적인** 콘텐츠를 생성해주세요.\n\n키워드: ${keyword}\n콘텐츠 유형: ${contentType}\n작성 스타일: ${styleType}\n\n**글쓰기 지침:**\n- AI처럼 딱딱하거나 반복적인 표현 대신, 실제 사람이 대화하듯 친근하고 매력적인 문체를 사용하세요.\n- 개인적인 경험이나 생각을 담아 진솔함을 더하세요. (예: \"저도 처음엔 ~라고 생각했었죠.\")\n- 독자와 감성적으로 연결될 수 있는 표현을 사용하세요.\n- 문맥에 맞게 짧고 긴 문장을 적절히 섞어 사용하세요.\n- 구글 SEO를 고려하여 키워드를 자연스럽게 통합하되, 글의 자연스러움을 최우선으로 하세요.\n- 글은 서론, 본론(상세 내용),단락 간 전환이 부드러워야 합니다.\n- 마크다운 형식(# 제목, ## 소제목 등)을 사용해주세요.\n- 글자 수는 최소 700자 이상으로 충분히 상세하게 작성해주세요.\n${anchorLinks.length > 0 ? `- 다음 앵커 텍스트와 URL을 문맥에 맞게 **정말 자연스럽게** 본문에 통합해주세요 (너무 광고처럼 보이지 않게):\\n${anchorLinks.map(link => `  - 텍스트: ${link.text}, URL: ${link.url}`).join('\\\\n')}` : ''}\n${images.length > 0 ? `- 총 ${images.length}개의 이미지가 있습니다. 글의 흐름상 가장 적절한 위치에 이미지 플레이스홀더 [IMAGE_1], [IMAGE_2], ..., [IMAGE_${images.length}] 를 각각 한 번씩만 포함해주세요.` : ''}\n\n**출력 형식:**\n먼저, 생성된 블로그 제목 5개를 다음 형식으로 제시해주세요:\n\`\`\`headlines\n제목 1\n제목 2\n제목 3\n제목 4\n제목 5\n\`\`\`\n\n그 다음, 제목 목록 바로 아래에 명확한 구분선(\`---\`)을 넣고, 위 지침에 따라 작성된 **본문 전체**를 마크다운 형식으로 작성해주세요.\n`;
+          
+          console.log("GPT-4 통합 프롬프트 전송:", combinedPrompt); // 디버깅용 로그
+          
+          // OpenAI API 통합 호출 (제목 + 본문)
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${OPENAI_API_KEY}`
             },
             body: JSON.stringify({
-              model: "gpt-4",
+              model: "gpt-4", // 고품질 유지를 위해 GPT-4 사용
               messages: [
-                {"role": "system", "content": "당신은 SEO 최적화된 콘텐츠를 생성하는 전문가입니다."},
-                {"role": "user", "content": headlinePrompt}
+                // 시스템 메시지는 역할과 기본 스타일 정의
+                {"role": "system", "content": "당신은 SEO 지식을 갖춘 전문 작가로, 매우 자연스럽고 인간적인 글을 작성합니다. AI처럼 보이는 딱딱한 표현을 피하고, 독자와 소통하듯 친근하게 작성하세요."},
+                // 사용자 메시지는 구체적인 지침과 키워드 제공
+                {"role": "user", "content": combinedPrompt}
               ],
-              temperature: 0.7,
-              max_tokens: 500
+              temperature: 0.8, 
+              max_tokens: 3500 // 제목과 본문을 포함하므로 max_tokens 조정
             })
           });
           
-          // OpenAI API 호출 - 본문 생성
-          const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-              model: "gpt-4",
-              messages: [
-                {"role": "system", "content": "당신은 SEO 최적화된 콘텐츠를 생성하는 전문가입니다. 사람이 직접 작성한 것 같은 자연스러운 글을 작성하세요."},
-                {"role": "user", "content": contentPrompt}
-              ],
-              temperature: 0.8,
-              max_tokens: 3000
-            })
-          });
-          
-          if (!headlinesResponse.ok || !contentResponse.ok) {
-            throw new Error("API 요청 중 오류가 발생했습니다.");
+          if (!response.ok) {
+            // API 오류 응답 로깅 강화
+            const errorBody = await response.text();
+            console.error('GPT API 오류 응답:', response.status, errorBody);
+            throw new Error(`API 요청 실패: ${response.status}`);
           }
           
-          const headlinesData = await headlinesResponse.json();
-          const contentData = await contentResponse.json();
+          const data = await response.json();
           
-          // 응답에서 제목과 본문 추출
-          const headlinesText = headlinesData.choices[0].message.content;
-          const contentText = contentData.choices[0].message.content;
+          // API 응답 로깅 (디버깅용)
+          console.log("GPT-4 API 응답:", data);
           
-          // 제목 목록 추출 (줄바꿈으로 구분된 제목들)
-          const extractedHeadlines = headlinesText.split('\n').filter(line => line.trim() !== '');
+          // 응답에서 전체 텍스트 추출
+          const combinedResultText = data.choices[0].message.content;
+          
+          // --- 응답 파싱 로직 --- 
+          let extractedHeadlines = [];
+          let contentText = '';
+          
+          // 1. 제목 추출 (```headlines ... ``` 블록 사용 시도)
+          const headlinesRegex = /```headlines\n([\s\S]*?)\n```/;
+          const headlinesMatch = combinedResultText.match(headlinesRegex);
+          
+          if (headlinesMatch && headlinesMatch[1]) {
+            extractedHeadlines = headlinesMatch[1].split('\n').filter(line => line.trim() !== '');
+            // 제목 블록 이후의 텍스트를 본문 후보로 설정
+            contentText = combinedResultText.substring(headlinesMatch[0].length).trim();
+          } else {
+            // 제목 블록이 없는 경우, 응답 전체를 본문으로 간주 (폴백)
+            console.warn("응답에서 headlines 블록을 찾을 수 없습니다. 기본 제목을 사용합니다.");
+            contentText = combinedResultText.trim();
+            // 기본 제목 설정 (기존 로직 유지)
+            extractedHeadlines = [
+              `${keyword}에 대한 심층 분석`,
+              `${keyword} 활용 가이드`,
+              `${keyword}, 알아두면 좋은 점들`,
+              `${keyword} 최신 정보`,
+              `${keyword} 전문가 팁`
+            ];
+          }
+
+          // 2. 본문에서 구분자 및 남은 제목 블록 제거 (안전장치)
+          // 혹시 모를 남은 headlines 블록 제거
+          contentText = contentText.replace(headlinesRegex, '').trim(); 
+          // 구분선(---) 제거
+          contentText = contentText.replace(/^---\s*\n?/, '').trim(); 
+          
+          // 제목과 본문 추출 결과 로그 (디버깅용)
+          console.log("추출된 제목:", extractedHeadlines);
+          // console.log("추출된 본문 (정리 후, 이미지 처리 전):", contentText); // 필요시 주석 해제
+          
+          // 이미지 플레이스홀더를 실제 이미지 마크다운으로 교체 (기존 로직 유지)
+          if (images.length > 0) {
+            console.log("이미지 플레이스홀더 교체 시작. 원본:", contentText); // 원본 로그 유지
+            images.forEach((image, index) => {
+              const placeholder = `[IMAGE_${index + 1}]`;
+              const placeholderRegex = new RegExp(`\\\[\\s*IMAGE_${index + 1}\\s*\\\]`, 'gi');
+              // 이미지 마크다운 생성 시 앞뒤 \n 제거
+              const imageMarkdown = `![${image.name || 'image'}](${image.dataUrl})`; 
+              
+              if (placeholderRegex.test(contentText)) {
+                 console.log(`플레이스홀더 "${placeholder}" 를 이미지 마크다운으로 교체합니다.`);
+                 contentText = contentText.replace(placeholderRegex, imageMarkdown);
+              } else {
+                 console.warn(`플레이스홀더 "${placeholder}" 가 콘텐츠에서 발견되지 않았습니다.`);
+                 // 플레이스홀더가 발견되지 않으면, 콘텐츠 끝에 이미지를 추가하는 등의 폴백 로직을 고려할 수 있음
+                 // 예: contentText += imageMarkdown; (가장 마지막에 추가)
+              }
+            });
+            console.log("이미지 플레이스홀더 교체 완료. 결과:", contentText);
+          }
           
           // 결과 설정
           setHeadlines(extractedHeadlines);
@@ -474,9 +509,9 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           
           // 이미지 추가 (있는 경우)
           if (images.length > 0) {
-            const randomImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
-            if (randomImageIndex < images.length && images[randomImageIndex]) {
+            const randomImageIndex = Math.floor(Math.random() * images.length); // Use valid index range
+            // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인 (사실상 randomImageIndex < images.length 는 항상 참)
+            if (images[randomImageIndex]) { // Check if image exists at the index
               mockContent += `![${images[randomImageIndex].name}](${images[randomImageIndex].dataUrl})\n`;
               mockContent += `*제가 직접 촬영한 ${keyword} 관련 이미지*\n\n`;
             }
@@ -494,9 +529,9 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           
           // 두 번째 이미지 추가 (있는 경우)
           if (images.length > 1) {
-            const secondImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const secondImageIndex = Math.floor(Math.random() * images.length); // Use valid index range
             // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
-            if (secondImageIndex < images.length && images[secondImageIndex]) {
+            if (images[secondImageIndex]) { // Check if image exists at the index
               mockContent += `![${images[secondImageIndex].name}](${images[secondImageIndex].dataUrl})\n`;
               mockContent += `*${keyword}를 활용한 실제 사례*\n\n`;
             }
@@ -514,9 +549,9 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           
           // 세 번째 이미지 추가 (있는 경우)
           if (images.length > 2) {
-            const thirdImageIndex = getRandomItem([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const thirdImageIndex = Math.floor(Math.random() * images.length); // Use valid index range
             // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
-            if (thirdImageIndex < images.length && images[thirdImageIndex]) {
+            if (thirdImageIndex < images.length && images[thirdImageIndex]) { // Check if image exists at the index (thirdImageIndex < images.length 는 항상 참)
               mockContent += `![${images[thirdImageIndex].name}](${images[thirdImageIndex].dataUrl})\n`;
               mockContent += `*${keyword} 활용의 놀라운 결과*\n\n`;
             }
@@ -538,11 +573,22 @@ ${anchorLinks.length > 0 ? `9. 다음 앵커 텍스트와 URL을 자연스럽게
           // 나머지 이미지 갤러리 형식으로 추가 (많은 경우)
           if (images.length > 3) {
             mockContent += `## 추가 이미지 갤러리\n\n`;
-            for (let i = 3; i < Math.min(images.length, 6); i++) {
-              // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인
-              if (i < images.length && images[i]) {
-                mockContent += `![${images[i].name}](${images[i].dataUrl})\n`;
-                mockContent += `*${keyword}와 관련된 추가 이미지 ${i-2}*\n\n`;
+            // Use a Set to track used indices to avoid duplicates in the gallery section
+            const usedIndices = new Set(); 
+            if (images[randomImageIndex]) usedIndices.add(randomImageIndex);
+            if (images.length > 1 && images[secondImageIndex]) usedIndices.add(secondImageIndex);
+            if (images.length > 2 && images[thirdImageIndex]) usedIndices.add(thirdImageIndex);
+
+            let galleryImageCount = 0;
+            for (let i = 0; i < images.length && galleryImageCount < 3; i++) { // Show max 3 more images in gallery
+              // Skip already used images
+              if (!usedIndices.has(i)) {
+                 // 이미지 배열 범위 확인 및 선택한 이미지가 존재하는지 확인 (i < images.length 는 항상 참)
+                if (images[i]) {
+                  mockContent += `![${images[i].name}](${images[i].dataUrl})\n`;
+                  mockContent += `*${keyword}와 관련된 추가 이미지 ${galleryImageCount + 1}*\n\n`;
+                  galleryImageCount++;
+                }
               }
             }
           }
@@ -1074,36 +1120,45 @@ ${images.slice(3).map((img, index) =>
               <div className="content-container">
                 <h2>생성된 콘텐츠</h2>
                 <div className="content-preview">
-                  <div dangerouslySetInnerHTML={{ 
-                    __html: result.replace(/\n/g, '<br>')
-                      .replace(/# (.*)/g, '<h1>$1</h1>')
-                      .replace(/## (.*)/g, '<h2>$1</h2>')
-                      .replace(/\*\*(.*)\*\*/g, '<strong>$1</strong>')
-                  }} />
+                  {/* HTML 변환 함수 사용 */}
+                  <div dangerouslySetInnerHTML={{ __html: convertMarkdownToHtml(result) }} />
                 </div>
                 
                 <div className="content-actions">
                   <button 
                     className="copy-btn"
                     onClick={() => {
-                      navigator.clipboard.writeText(result);
-                      alert('콘텐츠가 클립보드에 복사되었습니다.');
+                      // HTML로 변환된 내용을 복사
+                      const htmlContent = convertMarkdownToHtml(result);
+                      navigator.clipboard.writeText(htmlContent)
+                        .then(() => {
+                          alert('HTML 콘텐츠가 클립보드에 복사되었습니다.');
+                        })
+                        .catch(err => {
+                          console.error('클립보드 복사 실패:', err);
+                          // 대체 텍스트 복사 시도 (오류 발생 시)
+                          navigator.clipboard.writeText(result)
+                            .then(() => alert('HTML 복사 실패. 마크다운 원본이 복사되었습니다.'))
+                            .catch(() => alert('콘텐츠 복사에 실패했습니다.'));
+                        });
                     }}
                   >
-                    <i className="icon-copy"></i> 복사하기
+                    <i className="icon-copy"></i> HTML 복사
                   </button>
                   <button 
                     className="download-btn"
                     onClick={() => {
-                      const blob = new Blob([result], { type: 'text/plain' });
+                      // 다운로드는 마크다운 원본 유지
+                      const blob = new Blob([result], { type: 'text/plain;charset=utf-8' }); // UTF-8 인코딩 명시
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
                       a.download = `${keyword}-content.md`;
                       a.click();
+                      URL.revokeObjectURL(url); // 메모리 누수 방지
                     }}
                   >
-                    <i className="icon-download"></i> 다운로드
+                    <i className="icon-download"></i> 마크다운 다운로드
                   </button>
                 </div>
               </div>
