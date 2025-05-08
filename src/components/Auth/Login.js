@@ -42,7 +42,18 @@ const Login = () => {
       }
     } catch (error) {
       console.error('로그인 에러:', error);
-      setError('로그인 중 오류가 발생했습니다');
+      // 오류 메시지 상세화
+      if (error.message) {
+        if (error.message.includes('Invalid login credentials')) {
+          setError('아이디 또는 비밀번호가 올바르지 않습니다');
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('이메일 인증이 필요합니다');
+        } else {
+          setError(error.message);
+        }
+      } else {
+        setError('로그인 중 오류가 발생했습니다');
+      }
     } finally {
       setLoading(false);
     }

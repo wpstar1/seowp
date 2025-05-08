@@ -29,9 +29,9 @@ const Register = () => {
       return;
     }
     
-    // 비밀번호 길이 확인 (6자리 이상)
-    if (password.length < 6) {
-      setError('비밀번호는 6자리 이상이어야 합니다');
+    // 비밀번호 길이 확인 (4자리 이상)
+    if (password.length < 4) {
+      setError('비밀번호는 4자리 이상이어야 합니다');
       return;
     }
     
@@ -64,7 +64,12 @@ const Register = () => {
       }
     } catch (error) {
       console.error('회원가입 에러:', error);
-      setError('회원가입 중 오류가 발생했습니다');
+      // 오류 메시지 상세화
+      if (error.message) {
+        setError(error.message);
+      } else {
+        setError('회원가입 중 오류가 발생했습니다');
+      }
     } finally {
       setLoading(false);
     }
@@ -99,11 +104,11 @@ const Register = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 입력 (6자 이상)"
+              placeholder="비밀번호 입력 (4자 이상)"
               required
             />
             <small className="form-text">
-              최소 6자 이상으로 입력해 주세요
+              최소 4자 이상으로 입력해 주세요
             </small>
           </div>
           

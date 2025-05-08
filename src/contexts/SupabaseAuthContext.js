@@ -140,8 +140,19 @@ export const AuthProvider = ({ children }) => {
       }
 
       // 비밀번호 길이 확인
-      if (userData.password.length < 6) {
-        throw new Error('비밀번호는 6자리 이상이어야 합니다.');
+      if (userData.password.length < 4) {
+        throw new Error('비밀번호는 4자리 이상이어야 합니다.');
+      }
+      
+      // 사용자명 중복 확인
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', userData.username)
+        .single();
+      
+      if (existingUser) {
+        throw new Error('이미 등록된 사용자명입니다. 다른 사용자명을 선택해주세요.');
       }
       
       // 사용자명을 이메일 형식으로 변환 (Supabase 요구사항)
